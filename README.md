@@ -1,5 +1,7 @@
 # MITOSIS
 
+[![CI](https://github.com/jackjjack1/mitosis/actions/workflows/ci.yml/badge.svg)](https://github.com/jackjjack1/mitosis/actions/workflows/ci.yml)
+
 A local, self-improving artifact cloning lab. Drop a file; it dissects the surface, synthesizes a reconstruction, scores the match, and mutates its own cloning genome until the copy improves. Successful mutations are retained in browser memory and seed the next artifact of the same class.
 
 ## Run
