@@ -89,3 +89,18 @@ jobs:
           if not all(checks.values()):
               raise SystemExit(1)
           '
+
+      - name: Package the app for download
+        run: |
+          ditto -c -k --norsrc --noextattr --keepParent \
+            "$RUNNER_TEMP/MITOSIS.app" \
+            "$RUNNER_TEMP/MITOSIS-macos.zip"
+
+      - name: Upload macOS app
+        uses: actions/upload-artifact@v7
+        with:
+          name: MITOSIS-macos
+          path: ${{ runner.temp }}/MITOSIS-macos.zip
+          if-no-files-found: error
+          retention-days: 7
+          archive: false
