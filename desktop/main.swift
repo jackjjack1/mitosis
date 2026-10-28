@@ -238,6 +238,43 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
 
     func webView(
         _ webView: WKWebView,
+        runOpenPanelWith parameters: WKOpenPanelParameters,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping ([URL]?) -> Void
+    ) {
+        guard let window = webView.window else {
+            completionHandler(nil)
+            return
+        }
+        let panel = makeOpenPanel()
+        panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+        panel.beginSheetModal(for: window) { response in
+            completionHandler(response == .OK ? panel.urls : nil)
+        }
+    }
+
+    @objc func openSpecimen() {
+        guard let window else { return }
+        let panel = makeOpenPanel()
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.acceptFile(at: url)
+        }
+    }
+
+    private func makeOpenPanel() -> NSOpenPanel {
+        let panel = NSOpenPanel()
+        panel.title = "Open Specimen"
+        panel.message = "Choose an image, text or code file, or binary to clone."
+        panel.prompt = "Dissect"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        return panel
+    }
+
+    func webView(
+        _ webView: WKWebView,
         didFail navigation: WKNavigation!,
         withError error: Error
     ) {
@@ -257,9 +294,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: MitosisWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        installMenu()
         let controller = MitosisWindowController()
         self.controller = controller
+        installMenu(controller: controller)
         controller.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -284,7 +321,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
-    private func installMenu() {
+    private func installMenu(controller: MitosisWindowController) {
         let mainMenu = NSMenu()
 
         let appItem = NSMenuItem()
@@ -319,6 +356,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         appItem.submenu = appMenu
         mainMenu.addItem(appItem)
+
+        let fileItem = NSMenuItem()
+        let fileMenu = NSMenu(title: "File")
+        let openItem = fileMenu.addItem(
+            withTitle: "Open Specimen…",
+            action: #selector(MitosisWindowController.openSpecimen),
+            keyEquivalent: "o"
+        )
+        openItem.target = controller
+        fileMenu.addItem(.separator())
+        fileMenu.addItem(
+            withTitle: "Close Window",
+            action: #selector(NSWindow.performClose(_:)),
+            keyEquivalent: "w"
+        )
+        fileItem.submenu = fileMenu
+        mainMenu.addItem(fileItem)
 
         let editItem = NSMenuItem()
         let editMenu = NSMenu(title: "Edit")
