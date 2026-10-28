@@ -35,3 +35,57 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  desktop:
+    name: Desktop shell (macOS)
+    runs-on: macos-26
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package the app
+        env:
+          MITOSIS_INSTALL_PATH: ${{ runner.temp }}/MITOSIS.app
+        run: npm run desktop:build
+
+      - name: Compile the WebKit smoke probe
+        run: |
+          swiftc -O -swift-version 5 \
+            -framework Cocoa \
+            -framework WebKit \
+            scripts/desktop-smoke.swift \
+            -o "$RUNNER_TEMP/mitosis-smoke"
+
+      - name: Smoke-test the bundled interface
+        run: |
+          set -euo pipefail
+          output=$("$RUNNER_TEMP/mitosis-smoke" \
+            "$RUNNER_TEMP/MITOSIS.app/Contents/Resources/web/index.html")
+          printf '%s\n' "$output"
+          printf '%s' "$output" | python3 -c '
+          import json, sys
+
+          data = json.load(sys.stdin)
+          checks = {
+              "title": data.get("title") == "MITOSIS · artifact cloning lab",
+              "root mounted": data.get("rootChildren") == 1,
+              "drop target": data.get("dropPlate") is True,
+              "local storage": data.get("storage", {}).get("available") is True,
+              "no JS errors": data.get("errors") == [],
+          }
+          for name, passed in checks.items():
+              print(("PASS " if passed else "FAIL ") + name)
+          if not all(checks.values()):
+              raise SystemExit(1)
+          '
