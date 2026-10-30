@@ -50,10 +50,11 @@ final class DropWebView: WKWebView {
     }
 }
 
-final class MitosisWindowController: NSWindowController, WKNavigationDelegate, WKUIDelegate {
+final class MitosisWindowController: NSWindowController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate {
     private let webView: DropWebView
     private var isReady = false
     private var pendingFile: URL?
+    private var downloadTargets: [ObjectIdentifier: (temporary: URL, final: URL)] = [:]
 
     init() {
         let configuration = WKWebViewConfiguration()
@@ -215,6 +216,10 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
         decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
+        if navigationAction.shouldPerformDownload {
+            decisionHandler(.download)
+            return
+        }
         if
             navigationAction.navigationType == .linkActivated,
             let url = navigationAction.request.url,
@@ -225,6 +230,107 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
             return
         }
         decisionHandler(.allow)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        navigationAction: WKNavigationAction,
+        didBecome download: WKDownload
+    ) {
+        download.delegate = self
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        navigationResponse: WKNavigationResponse,
+        didBecome download: WKDownload
+    ) {
+        download.delegate = self
+    }
+
+    func download(
+        _ download: WKDownload,
+        decideDestinationUsing response: URLResponse,
+        suggestedFilename: String,
+        completionHandler: @escaping (URL?) -> Void
+    ) {
+        guard let window else {
+            completionHandler(nil)
+            return
+        }
+        let panel = NSSavePanel()
+        panel.title = "Save Clone"
+        panel.message = "Save the reconstructed clone."
+        panel.prompt = "Save"
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = downloadFilename(suggestedFilename)
+        panel.beginSheetModal(for: window) { [weak self] result in
+            guard
+                let self,
+                result == .OK,
+                let finalURL = panel.url
+            else {
+                completionHandler(nil)
+                return
+            }
+            let temporaryURL = finalURL.deletingLastPathComponent()
+                .appendingPathComponent(
+                    ".\(finalURL.lastPathComponent).mitosis-\(UUID().uuidString).download"
+                )
+            self.downloadTargets[ObjectIdentifier(download)] = (
+                temporaryURL,
+                finalURL
+            )
+            completionHandler(temporaryURL)
+        }
+    }
+
+    func downloadDidFinish(_ download: WKDownload) {
+        guard
+            let target = downloadTargets.removeValue(
+                forKey: ObjectIdentifier(download)
+            )
+        else {
+            return
+        }
+        do {
+            if FileManager.default.fileExists(atPath: target.final.path) {
+                _ = try FileManager.default.replaceItemAt(
+                    target.final,
+                    withItemAt: target.temporary
+                )
+            } else {
+                try FileManager.default.moveItem(
+                    at: target.temporary,
+                    to: target.final
+                )
+            }
+        } catch {
+            try? FileManager.default.removeItem(at: target.temporary)
+            showWarning(
+                "Could not save the clone",
+                "The clone downloaded, but MITOSIS could not save it to \(target.final.path). \(error.localizedDescription)"
+            )
+        }
+    }
+
+    func download(
+        _ download: WKDownload,
+        didFailWithError error: Error,
+        resumeData: Data?
+    ) {
+        if let target = downloadTargets.removeValue(
+            forKey: ObjectIdentifier(download)
+        ) {
+            try? FileManager.default.removeItem(at: target.temporary)
+        }
+        showWarning("Could not download the clone", error.localizedDescription)
+    }
+
+    private func downloadFilename(_ suggested: String) -> String {
+        let trimmed = suggested.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = URL(fileURLWithPath: trimmed).lastPathComponent
+        return name.isEmpty ? "artifact.clone" : name
     }
 
     func webView(
