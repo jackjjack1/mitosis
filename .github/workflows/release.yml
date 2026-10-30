@@ -73,15 +73,27 @@ jobs:
             "$RUNNER_TEMP/MITOSIS.app" \
             "$RUNNER_TEMP/MITOSIS-macos.zip"
 
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          shasum -a 256 MITOSIS-macos.zip > MITOSIS-macos.zip.sha256
+          cat MITOSIS-macos.zip.sha256
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
+          RELEASE_NOTES: |
+            macOS build is ad-hoc signed and not notarized. If macOS blocks it, right-click the app and choose Open, or run: xattr -dr com.apple.quarantine /Applications/MITOSIS.app
+
+            Verify the download from the folder containing both files: shasum -a 256 -c MITOSIS-macos.zip.sha256
         run: |
           set -euo pipefail
           gh release create "$TAG" \
             "$RUNNER_TEMP/MITOSIS-macos.zip#MITOSIS.app for macOS" \
+            "$RUNNER_TEMP/MITOSIS-macos.zip.sha256#SHA-256 checksum" \
             --verify-tag \
             --title "MITOSIS $TAG" \
-            --notes "macOS build is ad-hoc signed and not notarized. If macOS blocks it, right-click the app and choose Open, or run: xattr -dr com.apple.quarantine /Applications/MITOSIS.app" \
+            --notes "$RELEASE_NOTES" \
             --generate-notes
