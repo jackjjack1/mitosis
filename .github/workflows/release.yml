@@ -55,7 +55,7 @@ jobs:
 
           data = json.load(sys.stdin)
           checks = {
-              "title": data.get("title") == "MITOSIS · artifact cloning lab",
+              "title": data.get("title") == "MITOSIS · drop a file, take the parts",
               "root mounted": data.get("rootChildren") == 1,
               "drop target": data.get("dropPlate") is True,
               "local storage": data.get("storage", {}).get("available") is True,
