@@ -55,6 +55,24 @@ Swift symbols are rendered with full signatures — parameter labels and types, 
 
 **ENGINE KIT .ZIP** in the header downloads `mitosis-engine-kit.zip`: the real TypeScript sources for dissection, Mach-O reports with Swift/Objective-C name recovery, the image/text/binary cloners, exact-copy helpers, and the memory loop, plus a manifest, usage README, and integration example. The kit has no runtime dependencies; it expects browser APIs such as `File`, `Blob`, Canvas 2D, `crypto.subtle`, and `localStorage`.
 
+## Releasing
+
+```bash
+npm run release:prepare            # patch: 0.1.1 -> 0.1.2
+npm run release:prepare -- minor   # or minor, major, or an explicit X.Y.Z
+```
+
+One command writes the version everywhere it appears — `package.json`, both lockfile fields, and `CFBundleShortVersionString` plus the incremented `CFBundleVersion` in `desktop/Info.plist` — then runs the same consistency check CI uses, so a mismatch is caught before anything is tagged. It refuses a version that is already current or whose tag exists.
+
+```bash
+git add package.json package-lock.json desktop/Info.plist
+git commit -m "Bump the version to 0.1.2"
+git tag -a v0.1.2 -m "MITOSIS v0.1.2"
+git push origin main v0.1.2
+```
+
+Pushing the tag builds the app, smoke-tests it, and publishes the release with its checksum. The release workflow re-checks that the tag matches the files before it builds, so a mistagged release stops early instead of publishing an app that reports a different version.
+
 ## Honest limits
 
 - This is static structural analysis, not decompilation. No external reverse-engineering engine is invoked; Ghidra and REA are design lineage, not runtime dependencies.
@@ -71,5 +89,5 @@ src/components/ drop zone, feature sheet
 src/App.tsx     one flow: drop → features
 src/samples.ts  built-in image, text, and binary specimens
 desktop/        native macOS shell, Info.plist, icon generator
-scripts/        desktop build, inlining, smoke probe and assertions, version check
+scripts/        desktop build, inlining, smoke probe and assertions, version check and release prep
 ```
