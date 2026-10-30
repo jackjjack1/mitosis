@@ -60,6 +60,7 @@ swiftc \
   -swift-version 5 \
   -framework Cocoa \
   -framework WebKit \
+  desktop/Specimen.swift \
   desktop/main.swift \
   -o "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 

@@ -138,19 +138,20 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
         guard url.isFileURL else { return }
 
         do {
-            let values = try url.resourceValues(forKeys: [.fileSizeKey])
+            let specimen = try specimenFile(at: url)
+            let values = try specimen.url.resourceValues(forKeys: [.fileSizeKey])
             if let size = values.fileSize, size > 32 * 1024 * 1024 {
                 showWarning(
                     "Specimen too large",
-                    "The desktop app accepts files up to 32 MB. The browser build has the same analysis limits."
+                    "The desktop app accepts specimens up to 32 MB. The browser build has the same analysis limits."
                 )
                 return
             }
 
-            let data = try Data(contentsOf: url)
-            let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType
+            let data = try Data(contentsOf: specimen.url)
+            let mime = UTType(filenameExtension: specimen.url.pathExtension)?.preferredMIMEType
                 ?? "application/octet-stream"
-            let name = jsLiteral(url.lastPathComponent)
+            let name = jsLiteral(specimen.displayName)
             let type = jsLiteral(mime)
             let base64 = data.base64EncodedString()
             let script = """
@@ -184,6 +185,8 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
                     )
                 }
             }
+        } catch let error as SpecimenFileError {
+            showWarning("MITOSIS clones files, not folders", error.localizedDescription)
         } catch {
             showWarning("Could not read the specimen", error.localizedDescription)
         }
@@ -265,7 +268,7 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
     private func makeOpenPanel() -> NSOpenPanel {
         let panel = NSOpenPanel()
         panel.title = "Open Specimen"
-        panel.message = "Choose an image, text or code file, or binary to clone."
+        panel.message = "Choose an image, text or code file, binary, or app bundle to clone."
         panel.prompt = "Dissect"
         panel.canChooseFiles = true
         panel.canChooseDirectories = false

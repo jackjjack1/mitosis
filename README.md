@@ -23,7 +23,7 @@ npm run build
 npm run desktop:build
 ```
 
-This compiles the web app, inlines it into a single offline document, builds a native WebKit shell with its own icon, ad-hoc signs it, and installs **`MITOSIS.app`** to your Desktop. Open it with a double-click — no dev server or network connection is required. Add a specimen by dropping a file on the window, choosing **File → Open Specimen… (⌘O)**, or clicking the drop plate. The cloning memory is stored in the app's WebKit profile and is separate from the browser version.
+This compiles the web app, inlines it into a single offline document, builds a native WebKit shell with its own icon, ad-hoc signs it, and installs **`MITOSIS.app`** to your Desktop. Open it with a double-click — no dev server or network connection is required. Add a specimen by dropping a file or app bundle on the window, choosing **File → Open Specimen… (⌘O)**, or clicking the drop plate. App bundles are analyzed through their primary executable; plain folders need to be compressed to a ZIP first. The cloning memory is stored in the app's WebKit profile and is separate from the browser version.
 
 The wrapper lives in `desktop/` (Swift + `Info.plist` + icon generator). `scripts/build-desktop.sh` assembles and signs the bundle; `scripts/inline-build.mjs` does the single-file inlining required for file loading. The app is ad-hoc signed for local use, not notarized for distribution.
 
