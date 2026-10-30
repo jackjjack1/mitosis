@@ -27,6 +27,21 @@ This compiles the web app, inlines it into a single offline document, builds a n
 
 The wrapper lives in `desktop/` (Swift + `Info.plist` + icon generator). `scripts/build-desktop.sh` assembles and signs the bundle; `scripts/inline-build.mjs` does the single-file inlining required for file loading. The app is ad-hoc signed for local use, not notarized for distribution.
 
+### Download a CI build
+
+Every successful CI run publishes a **`MITOSIS-macos-bundle`** artifact for 7 days. It contains `MITOSIS-macos.zip` (the app) and `MITOSIS-macos.zip.sha256` (its checksum).
+
+Open the latest successful run from the CI badge and download the bundle from **Artifacts**, or use `gh`:
+
+```bash
+gh run download --repo jackjjack1/mitosis --name MITOSIS-macos-bundle
+shasum -a 256 -c MITOSIS-macos.zip.sha256
+unzip MITOSIS-macos.zip
+open MITOSIS.app
+```
+
+The downloaded artifact is `MITOSIS-macos-bundle.zip`; `gh run download` extracts it for you. The checksum inside covers the inner `MITOSIS-macos.zip`. To pin a specific run, pass its ID before `--name`. A passing checksum confirms an intact download, not publisher identity: the app is ad-hoc signed and not notarized, so macOS may still warn on first launch.
+
 ## What it clones
 
 | Class | Dissection | Reconstruction | Score |
