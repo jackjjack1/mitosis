@@ -96,11 +96,27 @@ jobs:
             "$RUNNER_TEMP/MITOSIS.app" \
             "$RUNNER_TEMP/MITOSIS-macos.zip"
 
+      - name: Generate checksum
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          shasum -a 256 MITOSIS-macos.zip > MITOSIS-macos.zip.sha256
+          cat MITOSIS-macos.zip.sha256
+
       - name: Upload macOS app
         uses: actions/upload-artifact@v7
         with:
           name: MITOSIS-macos
           path: ${{ runner.temp }}/MITOSIS-macos.zip
+          if-no-files-found: error
+          retention-days: 7
+          archive: false
+
+      - name: Upload checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: MITOSIS-macos.zip.sha256
+          path: ${{ runner.temp }}/MITOSIS-macos.zip.sha256
           if-no-files-found: error
           retention-days: 7
           archive: false
