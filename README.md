@@ -71,5 +71,5 @@ src/components/ drop zone, feature sheet
 src/App.tsx     one flow: drop → features
 src/samples.ts  built-in image, text, and binary specimens
 desktop/        native macOS shell, Info.plist, icon generator
-scripts/        desktop build, inlining, WebKit smoke probe
+scripts/        desktop build, inlining, WebKit smoke probe and its assertions
 ```

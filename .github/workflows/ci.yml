@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 permissions:
@@ -73,22 +75,7 @@ jobs:
           output=$("$RUNNER_TEMP/mitosis-smoke" \
             "$RUNNER_TEMP/MITOSIS.app/Contents/Resources/web/index.html")
           printf '%s\n' "$output"
-          printf '%s' "$output" | python3 -c '
-          import json, sys
-
-          data = json.load(sys.stdin)
-          checks = {
-              "title": data.get("title") == "MITOSIS · drop a file, take the parts",
-              "root mounted": data.get("rootChildren") == 1,
-              "drop target": data.get("dropPlate") is True,
-              "local storage": data.get("storage", {}).get("available") is True,
-              "no JS errors": data.get("errors") == [],
-          }
-          for name, passed in checks.items():
-              print(("PASS " if passed else "FAIL ") + name)
-          if not all(checks.values()):
-              raise SystemExit(1)
-          '
+          printf '%s' "$output" | python3 scripts/assert-smoke.py
 
       - name: Package the app for download
         run: |
