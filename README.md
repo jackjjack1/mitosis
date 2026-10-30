@@ -58,20 +58,19 @@ Swift symbols are rendered with full signatures — parameter labels and types, 
 ## Releasing
 
 ```bash
-npm run release:prepare            # patch: 0.1.1 -> 0.1.2
-npm run release:prepare -- minor   # or minor, major, or an explicit X.Y.Z
+npm run release:prepare -- patch --commit --push   # cut v0.1.2 and publish it
 ```
 
-One command writes the version everywhere it appears — `package.json`, both lockfile fields, and `CFBundleShortVersionString` plus the incremented `CFBundleVersion` in `desktop/Info.plist` — then runs the same consistency check CI uses, so a mismatch is caught before anything is tagged. It refuses a version that is already current or whose tag exists.
+That one command takes the version from `patch`, `minor`, `major`, or an explicit `X.Y.Z`, writes it everywhere it appears — `package.json`, both lockfile fields, and `CFBundleShortVersionString` plus the incremented `CFBundleVersion` in `desktop/Info.plist` — proves the files agree with the same check CI runs, then commits them, tags `v<version>`, and pushes both. The tag push builds the app, smoke-tests it, and publishes the release with its checksum.
+
+Stop earlier by leaving off the later flags:
 
 ```bash
-git add package.json package-lock.json desktop/Info.plist
-git commit -m "Bump the version to 0.1.2"
-git tag -a v0.1.2 -m "MITOSIS v0.1.2"
-git push origin main v0.1.2
+npm run release:prepare -- minor             # rewrite the files only
+npm run release:prepare -- 0.2.0 --commit    # commit and tag, push later
 ```
 
-Pushing the tag builds the app, smoke-tests it, and publishes the release with its checksum. The release workflow re-checks that the tag matches the files before it builds, so a mistagged release stops early instead of publishing an app that reports a different version.
+`--commit` refuses to run on a dirty working tree so the bump stays a commit of its own, refuses a detached HEAD, and refuses a version that is already current or whose tag exists. The release workflow re-checks that the tag matches the files before it builds, so a mistagged release stops early instead of publishing an app that reports a different version.
 
 ## Honest limits
 
