@@ -1,4 +1,4 @@
-export function EmptyState({
+export function DropZone({
   loading,
   error,
   dragging,
@@ -14,16 +14,16 @@ export function EmptyState({
   return (
     <section className="empty-state">
       <div className="empty-copy">
-        <p className="eyebrow">CLONING LAB / SELF-IMPROVING / LOCAL ONLY</p>
+        <p className="eyebrow">DROP · DISSECT · REUSE</p>
         <h2>
-          Drop anything.
+          Drop a file.
           <br />
-          Watch it <em>replicate</em>.
+          Take the <em>useful parts</em>.
         </h2>
         <p className="lede">
-          Images, text, code, raw binaries, artifacts that refuse to say what they
-          are. MITOSIS dissects the file, rebuilds it, scores the match, then mutates
-          its own strategy until the copy gets better.
+          MITOSIS reads the artifact and hands back plain, reusable pieces: palettes,
+          voice profiles, API surfaces, dependencies, structure, strings. Copy a
+          block or download the bundle.
         </p>
       </div>
 
@@ -52,7 +52,7 @@ export function EmptyState({
           <span className="cell cell-a" />
           <span className="cell cell-b" />
           {loading ? (
-            <span className="dish-label scanning">DISSECTING</span>
+            <span className="dish-label scanning">READING</span>
           ) : (
             <span className="dish-label">DROP</span>
           )}
@@ -60,16 +60,16 @@ export function EmptyState({
         </div>
         <p className="drop-title">
           {loading
-            ? "READING THE SURFACE"
+            ? "EXTRACTING FEATURES"
             : dragging
-              ? "RELEASE TO DISSECT"
+              ? "RELEASE TO EXTRACT"
               : "DRAG A FILE FROM ANYWHERE"}
         </p>
         <p className="drop-sub">
           or click to browse <span>·</span> any format <span>·</span> stays on this
           device
         </p>
-        <span className="plate-code">SPECIMEN INTAKE / 00</span>
+        <span className="plate-code">ONE FILE IN / USABLE PARTS OUT</span>
       </div>
 
       {error && <p className="error-message">{error}</p>}
@@ -85,33 +85,6 @@ export function EmptyState({
         <button type="button" onClick={() => onSample("binary")} disabled={loading}>
           UNKNOWN BINARY
         </button>
-      </div>
-
-      <div className="primer-grid">
-        <article>
-          <span>01 / DISSECT</span>
-          <h3>Read the evidence.</h3>
-          <p>
-            Magic bytes, entropy, section tables, palette samples, token cadence. No
-            flattery, no claims past what the file actually shows.
-          </p>
-        </article>
-        <article>
-          <span>02 / RECALL</span>
-          <h3>Start from memory.</h3>
-          <p>
-            Every run is retained in this browser. New artifacts inherit the strongest
-            genome found for their class instead of starting blank.
-          </p>
-        </article>
-        <article>
-          <span>03 / REFLECT</span>
-          <h3>Keep what survives.</h3>
-          <p>
-            A selection loop mutates palette, context order, and entropy blend. Only
-            mutations that improve the match are written back to the lab&apos;s mind.
-          </p>
-        </article>
       </div>
     </section>
   );

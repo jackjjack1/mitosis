@@ -296,10 +296,17 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
         let reportDownload =
             suggestedFilename.hasSuffix(".json") ||
             suggestedFilename.hasSuffix(".md")
-        panel.title = reportDownload ? "Save Analysis Report" : "Save Clone"
+        let featureBundle = suggestedFilename.hasSuffix(".zip")
+        panel.title = reportDownload
+            ? "Save Analysis Report"
+            : featureBundle
+                ? "Save Features"
+                : "Save Download"
         panel.message = reportDownload
             ? "Save the local Mach-O analysis report."
-            : "Save the reconstructed clone."
+            : featureBundle
+                ? "Save the extracted features bundle."
+                : "Save the downloaded file."
         panel.prompt = "Save"
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = downloadFilename(suggestedFilename)

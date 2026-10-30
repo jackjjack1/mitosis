@@ -5,6 +5,8 @@ import { createBinaryCloner } from "./binary";
 
 export { dissectFile } from "./dissect";
 export { readExact, saveExact } from "./exact";
+export { extractFeatures } from "./features";
+export type { Feature, FeatureFile, FeatureSet } from "./features";
 export {
   analyzeMachO,
   downloadMachOReport,
