@@ -52,6 +52,10 @@ The downloaded artifact is `MITOSIS-macos-bundle.zip`; `gh run download` extract
 
 Every generation is a real candidate: the engine mutates a strategy genome (e.g. palette size, context order, entropy blend), rebuilds the clone, and keeps the mutation only if the measured score improves.
 
+### True clone
+
+**TRUE CLONE** saves the exact original instead of the reconstruction. In the desktop app, an app bundle is copied as a whole bundle with its structure and metadata, not reduced to its executable. The same action is available as **File → Duplicate Original… (⌘D)**, including for folders and files above the 32 MB dissection limit.
+
 ## The learning loop
 
 - **DISSECT** — evidence-first analysis, inspired by the workflows of [REA](https://github.com/morluto/rea) and [Ghidra](https://github.com/NationalSecurityAgency/ghidra).
@@ -63,8 +67,9 @@ Use **RESET MIND** to clear local memory and the current run.
 
 ## Honest limits
 
-- A clone is a reconstruction, not a byte-identical copy. Text clones preserve texture and cadence, not wording; binary clones preserve statistics and headers, not executable behavior.
-- Binary clones download with a `.clone` extension and a `MITOSIS Clone` document type because macOS treats `.bin` as a MacBinary archive. They are not runnable executables or valid archives.
+- **DOWNLOAD CLONE** is a reconstruction, not a byte-identical copy. Text clones preserve texture and cadence, not wording; binary clones preserve statistics and headers, not executable behavior.
+- **TRUE CLONE** duplicates the original file or app bundle exactly; it is separate from the lab's statistical output.
+- Binary reconstructions download with a `.clone` extension and a `MITOSIS Clone` document type because macOS treats `.bin` as a MacBinary archive. They are not runnable executables or valid archives.
 - No external reverse-engineering engine is invoked. Ghidra/REA are design lineage, not runtime dependencies; section parsing covers basic ELF and PE headers only.
 - Analysis is capped (8 MB read, 720 px image scoring sample, 16K text chars, 96 KB binary sample) to keep the loop interactive.
 - Memory lives only in this browser profile.

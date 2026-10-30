@@ -50,16 +50,44 @@ final class DropWebView: WKWebView {
     }
 }
 
+final class TrueCloneBridge: NSObject, WKScriptMessageHandler {
+    weak var controller: MitosisWindowController?
+
+    func userContentController(
+        _ userContentController: WKUserContentController,
+        didReceive message: WKScriptMessage
+    ) {
+        switch message.name {
+        case "mitosisTrueClone":
+            controller?.duplicateOriginal()
+        case "mitosisClearOriginal":
+            controller?.clearOriginal()
+        default:
+            break
+        }
+    }
+}
+
 final class MitosisWindowController: NSWindowController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate {
     private let webView: DropWebView
+    private let trueCloneBridge = TrueCloneBridge()
     private var isReady = false
     private var pendingFile: URL?
+    private var originalURL: URL?
     private var downloadTargets: [ObjectIdentifier: (temporary: URL, final: URL)] = [:]
 
     init() {
         let configuration = WKWebViewConfiguration()
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         configuration.websiteDataStore = .default()
+        configuration.userContentController.add(
+            trueCloneBridge,
+            name: "mitosisTrueClone"
+        )
+        configuration.userContentController.add(
+            trueCloneBridge,
+            name: "mitosisClearOriginal"
+        )
         webView = DropWebView(frame: .zero, configuration: configuration)
 
         let visible = NSScreen.main?.visibleFrame ?? NSRect(
@@ -84,6 +112,7 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
         window.setFrameAutosaveName("MITOSISMainWindow")
 
         super.init(window: window)
+        trueCloneBridge.controller = self
 
         webView.navigationDelegate = self
         webView.uiDelegate = self
@@ -137,6 +166,7 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
             return
         }
         guard url.isFileURL else { return }
+        originalURL = url
 
         do {
             let specimen = try specimenFile(at: url)
@@ -144,7 +174,7 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
             if let size = values.fileSize, size > 32 * 1024 * 1024 {
                 showWarning(
                     "Specimen too large",
-                    "The desktop app accepts specimens up to 32 MB. The browser build has the same analysis limits."
+                    "The lab can dissect specimens up to 32 MB. Use File → Duplicate Original… (⌘D) to copy this one exactly."
                 )
                 return
             }
@@ -164,6 +194,7 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
                   bytes[index] = binary.charCodeAt(index);
                 }
                 const file = new File([bytes], \(name), { type: \(type) });
+                file.__mitosisOriginal = true;
                 const transfer = new DataTransfer();
                 transfer.items.add(file);
                 window.dispatchEvent(new DragEvent("drop", {
@@ -187,7 +218,10 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
                 }
             }
         } catch let error as SpecimenFileError {
-            showWarning("MITOSIS clones files, not folders", error.localizedDescription)
+            showWarning(
+                "Folder can't be dissected",
+                "\(error.localizedDescription) Use File → Duplicate Original… (⌘D) to copy it exactly."
+            )
         } catch {
             showWarning("Could not read the specimen", error.localizedDescription)
         }
@@ -371,6 +405,62 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
         }
     }
 
+    func clearOriginal() {
+        originalURL = nil
+    }
+
+    @objc func duplicateOriginal() {
+        guard let originalURL else {
+            showWarning(
+                "No original specimen",
+                "Drop a file or app bundle first, then choose File → Duplicate Original… (⌘D)."
+            )
+            return
+        }
+        guard let window else { return }
+        let panel = NSSavePanel()
+        panel.title = "Duplicate Original"
+        panel.message = "Save an exact copy of \(originalURL.lastPathComponent)."
+        panel.prompt = "Duplicate"
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = originalURL.lastPathComponent
+        panel.beginSheetModal(for: window) { [weak self] result in
+            guard
+                let self,
+                result == .OK,
+                let destination = panel.url
+            else {
+                return
+            }
+            self.copyOriginal(from: originalURL, to: destination)
+        }
+    }
+
+    private func copyOriginal(from source: URL, to destination: URL) {
+        let fileManager = FileManager.default
+        let temporaryURL = destination.deletingLastPathComponent()
+            .appendingPathComponent(
+                ".\(destination.lastPathComponent).mitosis-\(UUID().uuidString).copy"
+            )
+        do {
+            try fileManager.copyItem(at: source, to: temporaryURL)
+            if fileManager.fileExists(atPath: destination.path) {
+                _ = try fileManager.replaceItemAt(
+                    destination,
+                    withItemAt: temporaryURL
+                )
+            } else {
+                try fileManager.moveItem(at: temporaryURL, to: destination)
+            }
+        } catch {
+            try? fileManager.removeItem(at: temporaryURL)
+            showWarning(
+                "Could not duplicate the original",
+                "MITOSIS could not copy \(source.lastPathComponent). \(error.localizedDescription)"
+            )
+        }
+    }
+
     private func makeOpenPanel() -> NSOpenPanel {
         let panel = NSOpenPanel()
         panel.title = "Open Specimen"
@@ -474,6 +564,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             keyEquivalent: "o"
         )
         openItem.target = controller
+        let duplicateItem = fileMenu.addItem(
+            withTitle: "Duplicate Original…",
+            action: #selector(MitosisWindowController.duplicateOriginal),
+            keyEquivalent: "d"
+        )
+        duplicateItem.target = controller
         fileMenu.addItem(.separator())
         fileMenu.addItem(
             withTitle: "Close Window",

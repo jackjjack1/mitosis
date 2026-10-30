@@ -22,6 +22,19 @@ import { binarySpecimen, imageSpecimen, textSpecimen } from "./samples";
 const INITIAL_GENERATIONS = 32;
 const MANUAL_GENERATIONS = 40;
 
+function clearNativeOriginal(): void {
+  const bridge = (
+    window as Window & {
+      webkit?: {
+        messageHandlers?: {
+          mitosisClearOriginal?: { postMessage: (message: unknown) => void };
+        };
+      };
+    }
+  ).webkit?.messageHandlers?.mitosisClearOriginal;
+  bridge?.postMessage("clear");
+}
+
 function errorText(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Unknown dissection failure";
@@ -164,6 +177,9 @@ export default function App() {
       setError("Empty file — there is no surface to clone.");
       return;
     }
+    const sourceOriginal = Boolean(
+      (file as File & { __mitosisOriginal?: boolean }).__mitosisOriginal,
+    );
     runToken.current++;
     setError(null);
     setLoading(true);
@@ -199,6 +215,8 @@ export default function App() {
       const output = cloner.materialize(seed);
       const next: RunState = {
         artifact,
+        sourceFile: file,
+        sourceOriginal,
         cloner,
         recalled,
         seed,
@@ -327,6 +345,7 @@ export default function App() {
   }
 
   function handleReset(): void {
+    clearNativeOriginal();
     runToken.current++;
     activeRef.current = false;
     setSession(null);
@@ -340,6 +359,7 @@ export default function App() {
 
   async function handleSample(kind: "image" | "text" | "binary"): Promise<void> {
     try {
+      clearNativeOriginal();
       setError(null);
       const file =
         kind === "image"

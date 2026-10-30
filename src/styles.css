@@ -888,6 +888,47 @@ button:focus-visible,
   color: #071006;
 }
 
+.download.true-clone {
+  border-color: rgba(120, 227, 192, 0.5);
+  color: var(--teal);
+}
+
+.download.true-clone:hover {
+  background: var(--teal);
+  color: #071006;
+}
+
+.clone-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.clone-actions > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.clone-actions span {
+  color: var(--teal);
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: 0.11em;
+}
+
+.clone-actions small {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 7.5px;
+  line-height: 1.5;
+}
+
 .compare {
   position: relative;
   height: clamp(280px, 44vh, 430px);

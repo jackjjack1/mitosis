@@ -3,6 +3,36 @@ import type { CloneOutput } from "../engine/types";
 import { percent } from "../engine/util";
 import type { RunState } from "../model";
 
+type NativeCloneBridge = { postMessage: (message: unknown) => void };
+
+function trueCloneBridge(): NativeCloneBridge | undefined {
+  return (
+    window as Window & {
+      webkit?: { messageHandlers?: { mitosisTrueClone?: NativeCloneBridge } };
+    }
+  ).webkit?.messageHandlers?.mitosisTrueClone;
+}
+
+function downloadOriginal(run: RunState): void {
+  if (run.sourceOriginal) {
+    const bridge = trueCloneBridge();
+    if (bridge) {
+      bridge.postMessage("duplicate");
+      return;
+    }
+  }
+  const file = run.sourceFile;
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = run.artifact.name || "artifact";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 600);
+}
+
 function downloadClone(output: CloneOutput): void {
   const filename = output.filename ?? "artifact.clone";
   let url: string;
@@ -274,6 +304,22 @@ export function Preview({ run }: { run: RunState }) {
             <b>{fact.value}</b>
           </div>
         ))}
+      </div>
+      <div className="clone-actions">
+        <div>
+          <span>EXACT COPY</span>
+          <small>
+            Duplicate the original file or app bundle byte-for-byte. No
+            reconstruction.
+          </small>
+        </div>
+        <button
+          className="download true-clone"
+          type="button"
+          onClick={() => downloadOriginal(run)}
+        >
+          TRUE CLONE ↗
+        </button>
       </div>
     </section>
   );

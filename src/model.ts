@@ -13,6 +13,8 @@ export interface HistoryPoint {
 
 export interface RunState {
   artifact: Artifact;
+  sourceFile: File | null;
+  sourceOriginal: boolean;
   cloner: Cloner;
   recalled: MemoryEntry[];
   seed: Genome;
