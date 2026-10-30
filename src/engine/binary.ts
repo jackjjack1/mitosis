@@ -222,7 +222,7 @@ export function createBinaryCloner(artifact: Artifact): Cloner {
         score: result.score,
         bytes: result.bytes,
         filename: `${baseName(artifact.name)}.clone`,
-        mime: "application/octet-stream",
+        mime: "application/x-mitosis-clone",
         facts: [
           { label: "HISTOGRAM", value: percent(result.hist, 1) },
           { label: "ENTROPY SHAPE", value: percent(result.entropy, 1) },

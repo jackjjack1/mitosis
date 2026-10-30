@@ -6,6 +6,25 @@
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>MITOSIS</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>clone</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>MITOSIS Clone</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>io.freebuff.mitosis.clone</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>MITOSIS</string>
 	<key>CFBundleIconFile</key>
@@ -32,5 +51,29 @@
 	<string>MITOSIS — a local artifact cloning lab</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>MITOSIS Clone</string>
+			<key>UTTypeIdentifier</key>
+			<string>io.freebuff.mitosis.clone</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>clone</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-mitosis-clone</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

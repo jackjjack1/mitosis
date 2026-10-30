@@ -64,7 +64,7 @@ Use **RESET MIND** to clear local memory and the current run.
 ## Honest limits
 
 - A clone is a reconstruction, not a byte-identical copy. Text clones preserve texture and cadence, not wording; binary clones preserve statistics and headers, not executable behavior.
-- Binary clones download with a `.clone` extension because macOS treats `.bin` as a MacBinary archive. They are not runnable executables or valid archives.
+- Binary clones download with a `.clone` extension and a `MITOSIS Clone` document type because macOS treats `.bin` as a MacBinary archive. They are not runnable executables or valid archives.
 - No external reverse-engineering engine is invoked. Ghidra/REA are design lineage, not runtime dependencies; section parsing covers basic ELF and PE headers only.
 - Analysis is capped (8 MB read, 720 px image scoring sample, 16K text chars, 96 KB binary sample) to keep the loop interactive.
 - Memory lives only in this browser profile.
