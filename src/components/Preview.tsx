@@ -231,8 +231,9 @@ function BinaryCompare({ run }: { run: RunState }) {
         </div>
       </div>
       <p className="pane-note">
-        Rebuilt from context transitions, histogram mass, and entropy shape. Headers
-        are copied; payload bytes are new.
+        Rebuilt from context transitions, histogram mass, and entropy shape. This is
+        a statistical reconstruction, not a valid archive or executable. Headers are
+        copied; payload bytes are new.
       </p>
     </>
   );
