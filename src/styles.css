@@ -1641,6 +1641,10 @@ button:focus-visible,
   margin-top: 9px;
 }
 
+.export-actions {
+  padding: 0 13px 11px;
+}
+
 .primary {
   display: flex;
   flex: 1;

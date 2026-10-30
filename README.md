@@ -56,6 +56,10 @@ Every generation is a real candidate: the engine mutates a strategy genome (e.g.
 
 **TRUE CLONE** saves the exact original instead of the reconstruction. In the desktop app, an app bundle is copied as a whole bundle with its structure and metadata, not reduced to its executable. The same action is available as **File → Duplicate Original… (⌘D)**, including for folders and files above the 32 MB dissection limit.
 
+### Reusing the engine
+
+**SAVE ENGINE KIT** in the Feature Export card downloads `mitosis-engine-kit.zip`. It contains the real TypeScript sources for dissection, the image/text/binary cloners, and the memory loop, plus a manifest, usage README, and integration example. The kit has no runtime dependencies; it expects browser APIs such as `File`, `Blob`, Canvas 2D, `crypto.subtle`, and `localStorage`.
+
 ## The learning loop
 
 - **DISSECT** — evidence-first analysis, inspired by the workflows of [REA](https://github.com/morluto/rea) and [Ghidra](https://github.com/NationalSecurityAgency/ghidra).
@@ -78,6 +82,7 @@ Use **RESET MIND** to clear local memory and the current run.
 
 ```
 src/engine/     dissection, clone engines, scoring, memory
+src/features/   reusable engine-kit export
 src/components/ stage, preview, sidebar, header, empty state
 src/App.tsx     ingestion, evolution orchestration, persistence
 src/samples.ts  built-in image, text, and binary specimens

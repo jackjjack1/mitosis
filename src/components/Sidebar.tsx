@@ -1,5 +1,6 @@
 import type { Kind, MemoryEntry, Mind } from "../engine/types";
 import { percent } from "../engine/util";
+import { downloadEngineKit } from "../features/engineKit";
 import type { HistoryPoint, RunState } from "../model";
 
 const KINDS: Kind[] = ["image", "text", "binary"];
@@ -333,11 +334,33 @@ export function Sidebar({
         <p className="memory-foot">RETAIN · RECALL · REFLECT</p>
       </section>
 
+      <section className="card export-card">
+        <div className="card-head">
+          <span>FEATURE EXPORT</span>
+          <span className="gen-counter">SOURCE</span>
+        </div>
+        <p className="card-copy">
+          Save the dissection and cloning engine as a TypeScript kit for another
+          project. Includes image, text, binary, and memory modules.
+        </p>
+        <div className="export-actions">
+          <button
+            type="button"
+            className="primary export-kit"
+            onClick={downloadEngineKit}
+          >
+            SAVE ENGINE KIT
+            <span>.ZIP</span>
+          </button>
+        </div>
+        <p className="memory-foot">NO RUNTIME DEPENDENCIES · BROWSER APIs</p>
+      </section>
+
       <p className="fineprint">
         Runs entirely in this browser. Dissection follows the evidence-first
         workflows of REA and Ghidra; the memory loop is in the spirit of Hindsight.
-        No external RE engine is invoked. Clones are reconstructions, not
-        byte-identical copies.
+        No external RE engine is invoked. DOWNLOAD CLONE is a reconstruction;
+        TRUE CLONE copies the original.
       </p>
     </aside>
   );

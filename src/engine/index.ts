@@ -3,6 +3,8 @@ import { createImageCloner } from "./image";
 import { createTextCloner } from "./text";
 import { createBinaryCloner } from "./binary";
 
+export { dissectFile } from "./dissect";
+
 export function createCloner(artifact: Artifact): Cloner {
   if (artifact.kind === "image" && artifact.image) return createImageCloner(artifact);
   if (artifact.kind === "text" && artifact.text) return createTextCloner(artifact);
