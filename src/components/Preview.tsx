@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { saveExact } from "../engine/exact";
 import type { CloneOutput } from "../engine/types";
 import { percent } from "../engine/util";
 import type { RunState } from "../model";
@@ -23,14 +24,7 @@ function downloadOriginal(run: RunState): void {
   }
   const file = run.sourceFile;
   if (!file) return;
-  const url = URL.createObjectURL(file);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = run.artifact.name || "artifact";
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 600);
+  saveExact(file, run.artifact.name || "artifact");
 }
 
 function downloadClone(output: CloneOutput): void {

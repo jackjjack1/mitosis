@@ -1,6 +1,7 @@
 import type { Artifact } from "../engine/types";
 import { fmtBytes } from "../engine/util";
 import type { RunState } from "../model";
+import { Analysis } from "./Analysis";
 import { Preview } from "./Preview";
 
 function Pipeline({ run }: { run: RunState }) {
@@ -91,7 +92,7 @@ function Dissection({ artifact }: { artifact: Artifact }) {
         <Evidence
           label="FINGERPRINT"
           value={artifact.hash.toUpperCase()}
-          sub="SHA-256 / FIRST 64 BITS"
+          sub="SHA-256 / 64 HEX · ANALYZED HEAD"
           mono
         />
 
@@ -248,6 +249,7 @@ export function Stage({
       <Pipeline run={run} />
       <Preview run={run} />
       <Dissection artifact={artifact} />
+      <Analysis run={run} />
     </section>
   );
 }

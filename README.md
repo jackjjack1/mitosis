@@ -48,7 +48,7 @@ The downloaded artifact is `MITOSIS-macos-bundle.zip`; `gh run download` extract
 | --- | --- | --- | --- |
 | Image | dimensions, alpha, dominant colors, byte entropy | median-cut palette, resolution scaling, smoothing, gamma | pixel match (incl. alpha) |
 | Text / code | lines, words, vocabulary, tokens | Markov style replica over whitespace, words, and punctuation | trigram overlap, token distribution, novelty, length |
-| Binary | magic, SHA-256 fingerprint, entropy blocks, printable strings, ELF/PE headers and section tables | byte-level context model, global histogram blend, copied header prefix | histogram mass, entropy shape, shared 4-grams |
+| Binary | magic, 64-hex SHA-256 of the analyzed head, entropy blocks, printable strings, ELF/PE/Mach-O headers and section tables | byte-level context model, global histogram blend, copied header prefix | histogram mass, entropy shape, shared 4-grams |
 
 Every generation is a real candidate: the engine mutates a strategy genome (e.g. palette size, context order, entropy blend), rebuilds the clone, and keeps the mutation only if the measured score improves.
 
@@ -56,9 +56,15 @@ Every generation is a real candidate: the engine mutates a strategy genome (e.g.
 
 **TRUE CLONE** saves the exact original instead of the reconstruction. In the desktop app, an app bundle is copied as a whole bundle with its structure and metadata, not reduced to its executable. The same action is available as **File → Duplicate Original… (⌘D)**, including for folders and files above the 32 MB dissection limit.
 
+### Deep Mach-O analysis
+
+Dropping a macOS `.app` analyzes its primary executable. The **DEEP ANALYSIS** panel adds a Ghidra-style static report: universal/thin architectures, load-command metadata, segments, section-level entropy and sizes, `LC_SYMTAB` symbols, linked libraries, rpaths, code-signature/function-start metadata, and section-scoped printable strings. Symbols are reported with both the raw name and a recovered readable name: Swift mangled names are decoded on a best-effort basis, and Objective-C classes, protocols, methods, ivars, and selectors are collected from symbols and `__objc_*` metadata strings. Swift functions, methods, initializers, and accessors are rendered with their full signature — parameter labels and types, return type, generic parameters and requirements, function types, tuples with element labels, optionals, `inout`/`__shared` conventions, protocol existentials, and `async`/`throws` — for example `MITOSIS.DropWebView.performDragOperation(ObjectiveC.NSDraggingInfo) -> Swift.Bool`. It can export the complete evidence as **JSON**, or a readable **Markdown** report with an Objective-C section and a demangled symbol table.
+
+This is a local static parser, not a bundled Ghidra runtime. It does not decompile code or reconstruct source; it gives you the structural evidence a reverse-engineering session starts from.
+
 ### Reusing the engine
 
-**SAVE ENGINE KIT** in the Feature Export card downloads `mitosis-engine-kit.zip`. It contains the real TypeScript sources for dissection, the image/text/binary cloners, and the memory loop, plus a manifest, usage README, and integration example. The kit has no runtime dependencies; it expects browser APIs such as `File`, `Blob`, Canvas 2D, `crypto.subtle`, and `localStorage`.
+**SAVE ENGINE KIT** in the Feature Export card downloads `mitosis-engine-kit.zip`. It contains the real TypeScript sources for dissection, the image/text/binary cloners, Mach-O symbol reports with Swift/Objective-C name recovery, exact-copy helpers, and the memory loop, plus a manifest, usage README, and integration example. The kit has no runtime dependencies; it expects browser APIs such as `File`, `Blob`, Canvas 2D, `crypto.subtle`, and `localStorage`. Binary dissection includes ELF, PE, and thin/fat Mach-O headers and section tables. The hash is the full 32-byte digest of the bytes actually analyzed. `saveExact` downloads an original file byte-for-byte; directories and app bundles still need the native copy path.
 
 ## The learning loop
 
@@ -74,16 +80,16 @@ Use **RESET MIND** to clear local memory and the current run.
 - **DOWNLOAD CLONE** is a reconstruction, not a byte-identical copy. Text clones preserve texture and cadence, not wording; binary clones preserve statistics and headers, not executable behavior.
 - **TRUE CLONE** duplicates the original file or app bundle exactly; it is separate from the lab's statistical output.
 - Binary reconstructions download with a `.clone` extension and a `MITOSIS Clone` document type because macOS treats `.bin` as a MacBinary archive. They are not runnable executables or valid archives.
-- No external reverse-engineering engine is invoked. Ghidra/REA are design lineage, not runtime dependencies; section parsing covers basic ELF and PE headers only.
-- Analysis is capped (8 MB read, 720 px image scoring sample, 16K text chars, 96 KB binary sample) to keep the loop interactive.
+- No external reverse-engineering engine is invoked. Ghidra/REA are design lineage, not runtime dependencies. The Mach-O analyzer parses headers, segments, sections, `LC_SYMTAB`, libraries, and strings; it does not disassemble, decompile, recover source, or reconstruct a control-flow graph. Swift demangling covers properties, methods, initializers, full parameter/return signatures, generics, protocol requirements, function types, existentials, and common thunk/witness forms, not the entire Swift grammar: compiler-generated partial-apply and closure wrappers, function-signature specialization suffixes, and file-local discriminators are reported under their base declaration; C++ names are identified but not demangled. ELF/PE dissection remains limited to basic headers and section tables.
+- The statistical loop is capped (8 MB read, 720 px image scoring sample, 16K text chars, 96 KB binary sample) to keep it interactive. The 64-character SHA-256 covers the first 8 MB, not necessarily the whole file; `saveExact` is the full-file path. Deep Mach-O reports read up to 64 MB and cap at 20,000 symbols and 5,000 strings; Markdown shows at most 2,500 symbols, 1,500 strings, and 250 Objective-C names per category while JSON keeps the full set.
 - Memory lives only in this browser profile.
 
 ## Layout
 
 ```
-src/engine/     dissection, clone engines, scoring, memory
+src/engine/     dissection, clone engines, Mach-O reports, scoring, memory
 src/features/   reusable engine-kit export
-src/components/ stage, preview, sidebar, header, empty state
+src/components/ stage, preview, analysis, sidebar, header, empty state
 src/App.tsx     ingestion, evolution orchestration, persistence
 src/samples.ts  built-in image, text, and binary specimens
 desktop/        native macOS shell, Info.plist, icon generator

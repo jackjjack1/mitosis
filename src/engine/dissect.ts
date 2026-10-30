@@ -50,7 +50,6 @@ async function fingerprint(data: ArrayBuffer): Promise<string> {
   try {
     const digest = await crypto.subtle.digest("SHA-256", data);
     return [...new Uint8Array(digest)]
-      .slice(0, 8)
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
   } catch {
@@ -86,9 +85,18 @@ function formatOf(bytes: Uint8Array, file: File): string {
   if (at(0) === 0x1f && at(1) === 0x8b) return "GZIP";
   if (at(0) === 0x7f && at(1) === 0x45 && at(2) === 0x4c && at(3) === 0x46) return "ELF";
   if (at(0) === 0x4d && at(1) === 0x5a) return "PE / MZ";
-  if (at(0) === 0xca && at(1) === 0xfe && at(2) === 0xba && at(3) === 0xbe) return "MACH-O FAT";
+  if (
+    (at(0) === 0xca && at(1) === 0xfe && at(2) === 0xba && at(3) === 0xbe) ||
+    (at(0) === 0xbe && at(1) === 0xba && at(2) === 0xfe && at(3) === 0xca) ||
+    (at(0) === 0xca && at(1) === 0xfe && at(2) === 0xba && at(3) === 0xbf) ||
+    (at(0) === 0xbf && at(1) === 0xba && at(2) === 0xfe && at(3) === 0xca)
+  ) {
+    return "MACH-O FAT";
+  }
   if (
     (at(0) === 0xfe && at(1) === 0xed && at(2) === 0xfa && at(3) === 0xce) ||
+    (at(0) === 0xce && at(1) === 0xfa && at(2) === 0xed && at(3) === 0xfe) ||
+    (at(0) === 0xfe && at(1) === 0xed && at(2) === 0xfa && at(3) === 0xcf) ||
     (at(0) === 0xcf && at(1) === 0xfa && at(2) === 0xed && at(3) === 0xfe)
   ) {
     return "MACH-O";
@@ -389,6 +397,206 @@ function parsePe(bytes: Uint8Array): {
   return { header, sections };
 }
 
+const MACHO_CPUS: Record<number, string> = {
+  7: "x86",
+  0x01000007: "x86-64",
+  12: "ARM",
+  0x0100000c: "ARM64",
+  18: "PowerPC",
+  0x01000012: "PowerPC64",
+};
+
+const MACHO_TYPES: Record<number, string> = {
+  1: "OBJECT",
+  2: "EXECUTE",
+  3: "FVMLIB",
+  4: "CORE",
+  5: "PRELOAD",
+  6: "DYLIB",
+  7: "DYLINKER",
+  8: "BUNDLE",
+  9: "DYLIB_STUB",
+  10: "DSYM",
+  11: "KEXT_BUNDLE",
+};
+
+function machoArchName(cpu: number, subType: number): string {
+  if (cpu === 0x0100000c && (subType === 2 || subType === 0x80000002)) return "ARM64E";
+  if (cpu === 0x0100000c && subType === 0x8000000c) return "ARM64E.X1";
+  if (cpu === 0x01000007 && subType === 8) return "x86-64H";
+  return MACHO_CPUS[cpu] ?? `0x${cpu.toString(16)}`;
+}
+
+function readMachName(bytes: Uint8Array, offset: number, length: number): string {
+  let name = "";
+  for (let i = 0; i < length; i++) {
+    const at = offset + i;
+    if (at >= bytes.length) break;
+    const ch = bytes[at];
+    if (ch === 0) break;
+    if (ch < 32 || ch > 126) break;
+    name += String.fromCharCode(ch);
+  }
+  return name;
+}
+
+function parseMachOThin(bytes: Uint8Array): {
+  header: [string, string][];
+  sections: SectionInfo[];
+} | null {
+  const magic = readU32(bytes, 0, false);
+  let le: boolean;
+  let is64: boolean;
+  switch (magic) {
+    case 0xcefaedfe:
+      le = true;
+      is64 = false;
+      break;
+    case 0xcffaedfe:
+      le = true;
+      is64 = true;
+      break;
+    case 0xfeedface:
+      le = false;
+      is64 = false;
+      break;
+    case 0xfeedfacf:
+      le = false;
+      is64 = true;
+      break;
+    default:
+      return null;
+  }
+  const headerSize = is64 ? 32 : 28;
+  if (bytes.length < headerSize) return null;
+  const cpu = readU32(bytes, 4, le);
+  const subType = readU32(bytes, 8, le);
+  const fileType = readU32(bytes, 12, le);
+  const ncmds = readU32(bytes, 16, le);
+  const sizeofcmds = readU32(bytes, 20, le);
+  const flags = readU32(bytes, 24, le);
+  const header: [string, string][] = [
+    ["CLASS", is64 ? "MACH-O 64" : "MACH-O 32"],
+    ["CPU", machoArchName(cpu, subType)],
+    ["TYPE", MACHO_TYPES[fileType] ?? `0x${fileType.toString(16)}`],
+    ["COMMANDS", String(ncmds)],
+    ["ENDIAN", le ? "LITTLE" : "BIG"],
+    ["FLAGS", `0x${flags.toString(16)}`],
+  ];
+  const sections: SectionInfo[] = [];
+  const commandEnd = Math.min(bytes.length, headerSize + sizeofcmds);
+  let cursor = headerSize;
+  for (let i = 0; i < ncmds && cursor + 8 <= commandEnd; i++) {
+    const cmd = readU32(bytes, cursor, le);
+    const cmdsize = readU32(bytes, cursor + 4, le);
+    if (cmdsize < 8 || cursor + cmdsize > commandEnd) break;
+    if (cmd === 0x1 || cmd === 0x19) {
+      const is64Segment = cmd === 0x19;
+      const segmentSize = is64Segment ? 72 : 56;
+      const sectionSize = is64Segment ? 80 : 68;
+      const sectionCount = readU32(bytes, cursor + (is64Segment ? 64 : 48), le);
+      if (cmdsize >= segmentSize && sectionCount < 512) {
+        const segmentName = readMachName(bytes, cursor + 8, 16);
+        for (let j = 0; j < sectionCount; j++) {
+          const sectionOffset = cursor + segmentSize + j * sectionSize;
+          if (sectionOffset + sectionSize > cursor + cmdsize) break;
+          const sectionName = readMachName(bytes, sectionOffset, 16);
+          const address = is64Segment
+            ? readU64(bytes, sectionOffset + 32, le)
+            : readU32(bytes, sectionOffset + 32, le);
+          const size = is64Segment
+            ? readU64(bytes, sectionOffset + 40, le)
+            : readU32(bytes, sectionOffset + 36, le);
+          if (sectionName && size > 0) {
+            sections.push({
+              name: segmentName ? `${segmentName}.${sectionName}` : sectionName,
+              size,
+              address,
+            });
+            if (sections.length >= 48) break;
+          }
+        }
+      }
+    }
+    cursor += cmdsize;
+    if (sections.length >= 48) break;
+  }
+  header.push(["SECTIONS", String(sections.length)]);
+  return { header, sections: sections.slice(0, 48) };
+}
+
+function parseFatMachO(bytes: Uint8Array): {
+  header: [string, string][];
+  sections: SectionInfo[];
+} | null {
+  const magic = readU32(bytes, 0, false);
+  let le: boolean;
+  let is64: boolean;
+  if (magic === 0xcafebabe) {
+    le = false;
+    is64 = false;
+  } else if (magic === 0xbebafeca) {
+    le = true;
+    is64 = false;
+  } else if (magic === 0xcafebabf) {
+    le = false;
+    is64 = true;
+  } else if (magic === 0xbfbafeca) {
+    le = true;
+    is64 = true;
+  } else {
+    return null;
+  }
+  if (bytes.length < 8) return null;
+  const count = Math.min(readU32(bytes, 4, le), 16);
+  const entrySize = is64 ? 32 : 20;
+  const archNames: string[] = [];
+  let thinHeader: [string, string][] = [];
+  let sections: SectionInfo[] = [];
+  for (let i = 0; i < count; i++) {
+    const base = 8 + i * entrySize;
+    if (base + entrySize > bytes.length) break;
+    const cpu = readU32(bytes, base, le);
+    const subType = readU32(bytes, base + 4, le);
+    archNames.push(machoArchName(cpu, subType));
+    const offset = is64 ? readU64(bytes, base + 8, le) : readU32(bytes, base + 8, le);
+    const size = is64 ? readU64(bytes, base + 16, le) : readU32(bytes, base + 12, le);
+    if (!thinHeader.length && offset > 0 && offset < bytes.length) {
+      const end = Math.min(bytes.length, offset + Math.max(1, size));
+      const thin = parseMachOThin(bytes.subarray(offset, end));
+      if (thin) {
+        thinHeader = thin.header;
+        sections = thin.sections;
+      }
+    }
+  }
+  const header: [string, string][] = [
+    ["FAT", `${count} ARCH`],
+    ["ARCHS", archNames.join(", ")],
+  ];
+  for (const [key, value] of thinHeader) {
+    if (key !== "SECTIONS") header.push([key, value]);
+  }
+  header.push(["SECTIONS", String(sections.length)]);
+  return { header, sections: sections.slice(0, 48) };
+}
+
+function parseMachO(bytes: Uint8Array): {
+  header: [string, string][];
+  sections: SectionInfo[];
+} | null {
+  const magic = readU32(bytes, 0, false);
+  if (
+    magic === 0xcafebabe ||
+    magic === 0xbebafeca ||
+    magic === 0xcafebabf ||
+    magic === 0xbfbafeca
+  ) {
+    return parseFatMachO(bytes);
+  }
+  return parseMachOThin(bytes);
+}
+
 function extractStrings(bytes: Uint8Array): string[] {
   const found: string[] = [];
   const seen = new Set<string>();
@@ -412,7 +620,7 @@ function extractStrings(bytes: Uint8Array): string[] {
 }
 
 function makeBinaryInfo(bytes: Uint8Array): BinaryInfo {
-  const header = parseElf(bytes) ?? parsePe(bytes);
+  const header = parseElf(bytes) ?? parsePe(bytes) ?? parseMachO(bytes);
   return {
     sample: bytes,
     histogram: byteHistogram(bytes),

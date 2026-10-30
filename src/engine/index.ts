@@ -4,6 +4,39 @@ import { createTextCloner } from "./text";
 import { createBinaryCloner } from "./binary";
 
 export { dissectFile } from "./dissect";
+export { readExact, saveExact } from "./exact";
+export {
+  analyzeMachO,
+  downloadMachOReport,
+  formatMachOReport,
+  isMachOArtifact,
+  reportFileName,
+} from "./macho";
+export type {
+  MachOAnalysis,
+  MachOArchitecture,
+  MachOSection,
+  MachOSegment,
+  MachOString,
+  MachOSymbol,
+  MachOSymbolKind,
+} from "./macho";
+export {
+  demangleObjCClass,
+  demangleSwift,
+  demangleSymbol,
+  recoverObjCClassName,
+  recoverObjectiveC,
+} from "./demangle";
+export type {
+  DemangledSymbol,
+  ObjectiveCKind,
+  ObjectiveCMethod,
+  ObjectiveCName,
+  ObjectiveCRecovery,
+  ObjectiveCResult,
+  SymbolLanguage,
+} from "./demangle";
 
 export function createCloner(artifact: Artifact): Cloner {
   if (artifact.kind === "image" && artifact.image) return createImageCloner(artifact);

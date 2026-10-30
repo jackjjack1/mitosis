@@ -293,8 +293,13 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
             return
         }
         let panel = NSSavePanel()
-        panel.title = "Save Clone"
-        panel.message = "Save the reconstructed clone."
+        let reportDownload =
+            suggestedFilename.hasSuffix(".json") ||
+            suggestedFilename.hasSuffix(".md")
+        panel.title = reportDownload ? "Save Analysis Report" : "Save Clone"
+        panel.message = reportDownload
+            ? "Save the local Mach-O analysis report."
+            : "Save the reconstructed clone."
         panel.prompt = "Save"
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = downloadFilename(suggestedFilename)
@@ -342,8 +347,8 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
         } catch {
             try? FileManager.default.removeItem(at: target.temporary)
             showWarning(
-                "Could not save the clone",
-                "The clone downloaded, but MITOSIS could not save it to \(target.final.path). \(error.localizedDescription)"
+                "Could not save the download",
+                "The file downloaded, but MITOSIS could not save it to \(target.final.path). \(error.localizedDescription)"
             )
         }
     }
@@ -358,7 +363,7 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
         ) {
             try? FileManager.default.removeItem(at: target.temporary)
         }
-        showWarning("Could not download the clone", error.localizedDescription)
+        showWarning("Could not download the file", error.localizedDescription)
     }
 
     private func downloadFilename(_ suggested: String) -> String {

@@ -81,7 +81,7 @@ if [ -e "$INSTALL_PATH" ]; then
 fi
 
 mkdir -p "$(dirname "$INSTALL_PATH")"
-ditto "$APP_BUNDLE" "$INSTALL_PATH"
+ditto --norsrc --noextattr "$APP_BUNDLE" "$INSTALL_PATH"
 
 # Desktop/iCloud sync adds FinderInfo metadata after copying, which strict
 # bundle verification treats as detritus. The executable remains launchable.

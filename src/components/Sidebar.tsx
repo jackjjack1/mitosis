@@ -341,7 +341,8 @@ export function Sidebar({
         </div>
         <p className="card-copy">
           Save the dissection and cloning engine as a TypeScript kit for another
-          project. Includes image, text, binary, and memory modules.
+          project. Includes image, text, binary, Mach-O reports, exact-copy,
+          and memory modules.
         </p>
         <div className="export-actions">
           <button
