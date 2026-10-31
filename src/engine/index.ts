@@ -40,6 +40,32 @@ export type {
   SymbolLanguage,
 } from "./demangle";
 
+export {
+  advanceEvolution,
+  startEvolution,
+} from "./evolve";
+export type { EvolutionState, ScorePoint } from "./evolve";
+export {
+  downloadBytes,
+  exportReconstruction,
+  reconstructionFilename,
+  RECONSTRUCTION_EXT,
+  RECONSTRUCTION_MIME,
+} from "./export";
+export type { ExportedFile } from "./export";
+export {
+  CLONE_FORMAT_ID,
+  CLONE_FORMAT_VERSION,
+  CLONE_MAGIC,
+  CLONE_MIME,
+  CloneFormatError,
+  decodeCloneSession,
+  encodeCloneSession,
+  isCloneSession,
+  sessionFilename,
+} from "./session";
+export type { CloneSession } from "./session";
+
 export function createCloner(artifact: Artifact): Cloner {
   if (artifact.kind === "image" && artifact.image) return createImageCloner(artifact);
   if (artifact.kind === "text" && artifact.text) return createTextCloner(artifact);

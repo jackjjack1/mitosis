@@ -10,6 +10,9 @@ import demangleSource from "../engine/demangle.ts?raw";
 import machoSource from "../engine/macho.ts?raw";
 import memorySource from "../engine/memory.ts?raw";
 import featuresSource from "../engine/features.ts?raw";
+import evolveSource from "../engine/evolve.ts?raw";
+import sessionSource from "../engine/session.ts?raw";
+import exportSource from "../engine/export.ts?raw";
 import { zipStore } from "./zip";
 
 const README = [
@@ -48,7 +51,11 @@ const README = [
   "",
   "The memory module is optional. `recordRun`, `recallMemories`, and",
   "`updateRun` operate on a plain `Mind` object and persist through",
-  "`loadMind`/`saveMind`.",
+  "`loadMind`/`saveMind`. `startEvolution(cloner, seed?)` and",
+  "`advanceEvolution` hill-climb one genome and record a score history.",
+  "`exportReconstruction` turns the current clone into PNG, text, or raw",
+  "bytes. `encodeCloneSession` / `decodeCloneSession` save and reopen that",
+  "run as a versioned `.clone` file (UTI `io.freebuff.mitosis.clone`).",
   "",
   "## Usable features",
   "",
@@ -157,6 +164,9 @@ const MANIFEST = `${JSON.stringify(
       "binary cloner",
       "exact original download",
       "retain/recall/reflect memory",
+      "single-genome evolution history",
+      "png/txt/bin reconstruction export",
+      "versioned .clone sessions",
     ],
     source: "https://github.com/jackjjack1/mitosis",
   },
@@ -185,6 +195,9 @@ export function buildEngineKit(): Blob {
     { name: "engine/features.ts", data: encode(featuresSource) },
     { name: "engine/index.ts", data: encode(clonerSource) },
     { name: "engine/memory.ts", data: encode(memorySource) },
+    { name: "engine/evolve.ts", data: encode(evolveSource) },
+    { name: "engine/session.ts", data: encode(sessionSource) },
+    { name: "engine/export.ts", data: encode(exportSource) },
   ]);
 }
 

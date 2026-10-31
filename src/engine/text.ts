@@ -211,7 +211,7 @@ export function createTextCloner(artifact: Artifact): Cloner {
       return {
         score: result.score,
         text: result.text,
-        filename: `${baseName(artifact.name)}.style.txt`,
+        filename: `${baseName(artifact.name)}-clone.txt`,
         mime: "text/plain",
         facts: [
           { label: "TRIGRAM MATCH", value: percent(detail.trigram, 1) },
