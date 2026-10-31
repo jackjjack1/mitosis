@@ -171,10 +171,14 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
         do {
             let specimen = try specimenFile(at: url)
             let values = try specimen.url.resourceValues(forKeys: [.fileSizeKey])
-            if let size = values.fileSize, size > 32 * 1024 * 1024 {
+            let cloneSession = url.pathExtension.lowercased() == "clone"
+            let limit = cloneSession ? 40 * 1024 * 1024 : 32 * 1024 * 1024
+            if let size = values.fileSize, size > limit {
                 showWarning(
                     "Specimen too large",
-                    "The lab can dissect specimens up to 32 MB. Use File → Duplicate Original… (⌘D) to copy this one exactly."
+                    cloneSession
+                        ? "Clone sessions can be reopened up to 40 MB."
+                        : "The lab can dissect specimens up to 32 MB. Use File → Duplicate Original… (⌘D) to copy this one exactly."
                 )
                 return
             }
@@ -297,16 +301,29 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
             suggestedFilename.hasSuffix(".json") ||
             suggestedFilename.hasSuffix(".md")
         let featureBundle = suggestedFilename.hasSuffix(".zip")
+        let cloneSession = suggestedFilename.hasSuffix(".clone")
+        let reconstruction =
+            suggestedFilename.hasSuffix(".png") ||
+            suggestedFilename.hasSuffix(".txt") ||
+            suggestedFilename.hasSuffix(".bin")
         panel.title = reportDownload
             ? "Save Analysis Report"
             : featureBundle
                 ? "Save Features"
-                : "Save Download"
+                : cloneSession
+                    ? "Save Clone Session"
+                    : reconstruction
+                        ? "Save Reconstruction"
+                        : "Save Download"
         panel.message = reportDownload
             ? "Save the local Mach-O analysis report."
             : featureBundle
                 ? "Save the extracted features bundle."
-                : "Save the downloaded file."
+                : cloneSession
+                    ? "Save this evolution run. Open the .clone file later to continue."
+                    : reconstruction
+                        ? "Save the reconstructed clone."
+                        : "Save the downloaded file."
         panel.prompt = "Save"
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = downloadFilename(suggestedFilename)
@@ -476,7 +493,7 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
     private func makeOpenPanel() -> NSOpenPanel {
         let panel = NSOpenPanel()
         panel.title = "Open Specimen"
-        panel.message = "Choose an image, text or code file, binary, or app bundle to clone."
+        panel.message = "Choose an image, text or code file, binary, app bundle, or a .clone session to reopen."
         panel.prompt = "Dissect"
         panel.canChooseFiles = true
         panel.canChooseDirectories = false

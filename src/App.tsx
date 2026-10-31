@@ -1,23 +1,40 @@
 import { useEffect, useRef, useState } from "react";
 import { dissectFile } from "./engine/dissect";
+import type { EvolutionState } from "./engine/evolve";
+import { readExact } from "./engine/exact";
 import { extractFeatures } from "./engine/features";
 import type { FeatureSet } from "./engine/features";
 import { analyzeMachO, isMachOArtifact } from "./engine/macho";
 import type { MachOAnalysis } from "./engine/macho";
+import { CloneFormatError, decodeCloneSession, isCloneSession } from "./engine/session";
 import type { Artifact } from "./engine/types";
 import { downloadEngineKit } from "./features/engineKit";
+import { CloneLab } from "./components/CloneLab";
 import { DropZone } from "./components/DropZone";
 import { FeatureSheet } from "./components/FeatureSheet";
 import { binarySpecimen, imageSpecimen, textSpecimen } from "./samples";
+
+type ResultView = "features" | "evolve";
 
 interface Extraction {
   artifact: Artifact;
   analysis: MachOAnalysis | null;
   set: FeatureSet;
+  specimen: { name: string; mime: string; bytes: Uint8Array };
+  evolution: EvolutionState | null;
+  view: ResultView;
+  loadId: number;
 }
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown reading error";
+}
+
+async function fileLooksLikeClone(file: File): Promise<boolean> {
+  if (file.name.toLowerCase().endsWith(".clone")) return true;
+  if (file.size < 8) return false;
+  const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  return isCloneSession(head);
 }
 
 export default function App() {
@@ -25,6 +42,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [evolving, setEvolving] = useState(false);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const tokenRef = useRef(0);
@@ -37,6 +55,38 @@ export default function App() {
     };
   }, []);
 
+  async function loadSpecimen(
+    file: File,
+    evolution: EvolutionState | null,
+    token: number,
+  ): Promise<void> {
+    const specimenBytes = new Uint8Array(await readExact(file));
+    const artifact = await dissectFile(file);
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    previewRef.current = artifact.previewUrl;
+
+    let analysis: MachOAnalysis | null = null;
+    if (artifact.kind === "binary" && isMachOArtifact(artifact.format)) {
+      analysis = await analyzeMachO(file);
+    }
+    if (token !== tokenRef.current) return;
+
+    setResult({
+      artifact,
+      analysis,
+      set: extractFeatures(artifact, analysis),
+      specimen: {
+        name: file.name,
+        mime: file.type || "application/octet-stream",
+        bytes: specimenBytes,
+      },
+      evolution,
+      view: evolution ? "evolve" : "features",
+      loadId: token,
+    });
+    setLoading(false);
+  }
+
   async function ingest(file: File): Promise<void> {
     if (!file.size) {
       setError("Empty file — there is nothing to read.");
@@ -45,21 +95,32 @@ export default function App() {
     const token = ++tokenRef.current;
     setError(null);
     setLoading(true);
+    setEvolving(false);
     setResult(null);
 
     try {
-      const artifact = await dissectFile(file);
-      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
-      previewRef.current = artifact.previewUrl;
-
-      let analysis: MachOAnalysis | null = null;
-      if (artifact.kind === "binary" && isMachOArtifact(artifact.format)) {
-        analysis = await analyzeMachO(file);
+      if (await fileLooksLikeClone(file)) {
+        if (token !== tokenRef.current) return;
+        let session;
+        try {
+          session = decodeCloneSession(new Uint8Array(await file.arrayBuffer()));
+        } catch (caught) {
+          if (caught instanceof CloneFormatError) throw caught;
+          throw new CloneFormatError("Could not read that .clone session");
+        }
+        if (!session.specimen.bytes.length) {
+          throw new CloneFormatError("The session specimen is empty");
+        }
+        if (token !== tokenRef.current) return;
+        const specimenCopy = new ArrayBuffer(session.specimen.bytes.byteLength);
+        new Uint8Array(specimenCopy).set(session.specimen.bytes);
+        const specimenFile = new File([specimenCopy], session.specimen.name, {
+          type: session.specimen.mime || "application/octet-stream",
+        });
+        await loadSpecimen(specimenFile, session.evolution, token);
+        return;
       }
-      if (token !== tokenRef.current) return;
-
-      setResult({ artifact, analysis, set: extractFeatures(artifact, analysis) });
-      setLoading(false);
+      await loadSpecimen(file, null, token);
     } catch (caught) {
       if (token !== tokenRef.current) return;
       setLoading(false);
@@ -122,6 +183,10 @@ export default function App() {
     }
   }
 
+  function setView(view: ResultView): void {
+    setResult((current) => (current ? { ...current, view } : current));
+  }
+
   return (
     <div className="app">
       <div className="backdrop" aria-hidden="true" />
@@ -139,9 +204,9 @@ export default function App() {
         </div>
 
         <div className="topbar-right">
-          <div className="lab-status">
+          <div className={`lab-status ${evolving ? "is-live" : ""}`}>
             <i className="pulse-dot" />
-            LOCAL · NO UPLOAD
+            {evolving ? "EVOLVING · LOCAL" : "LOCAL · NO UPLOAD"}
           </div>
           <button
             type="button"
@@ -156,11 +221,48 @@ export default function App() {
 
       <main className="simple-shell">
         {result ? (
-          <FeatureSheet
-            artifact={result.artifact}
-            set={result.set}
-            onBrowse={() => fileInput.current?.click()}
-          />
+          <>
+            <div className="view-switch" role="tablist" aria-label="Result">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={result.view === "features"}
+                onClick={() => setView("features")}
+              >
+                FEATURES
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={result.view === "evolve"}
+                onClick={() => setView("evolve")}
+              >
+                EVOLVE
+              </button>
+            </div>
+            {result.view === "features" ? (
+              <FeatureSheet
+                artifact={result.artifact}
+                set={result.set}
+                onBrowse={() => fileInput.current?.click()}
+              />
+            ) : (
+              <CloneLab
+                key={result.loadId}
+                artifact={result.artifact}
+                specimen={result.specimen}
+                initial={result.evolution}
+                onEvolution={(evolution) => {
+                  setResult((current) =>
+                    current && current.loadId === result.loadId
+                      ? { ...current, evolution }
+                      : current,
+                  );
+                }}
+                onRunning={setEvolving}
+              />
+            )}
+          </>
         ) : (
           <DropZone
             loading={loading}
@@ -190,7 +292,7 @@ export default function App() {
         <div className="drag-overlay">
           <div>
             <span>RELEASE TO REPLACE</span>
-            <small>the current feature sheet is replaced</small>
+            <small>the current sheet is replaced</small>
           </div>
         </div>
       )}

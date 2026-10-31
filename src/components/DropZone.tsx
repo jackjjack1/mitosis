@@ -22,8 +22,8 @@ export function DropZone({
         </h2>
         <p className="lede">
           MITOSIS reads the artifact and hands back plain, reusable pieces: palettes,
-          voice profiles, API surfaces, dependencies, structure, strings. Copy a
-          block or download the bundle.
+          voice profiles, API surfaces, dependencies, structure, strings. Evolve a
+          reconstruction, export it, or save the run as a .clone session.
         </p>
       </div>
 

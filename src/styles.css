@@ -1181,3 +1181,271 @@ button:focus-visible,
     flex: 1 1 40%;
   }
 }
+
+/* ---------- evolve ---------- */
+
+.view-switch {
+  display: flex;
+  width: fit-content;
+  margin-bottom: 18px;
+  border: 1px solid var(--line-soft);
+}
+
+.view-switch button {
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}
+
+.view-switch button[aria-selected="true"] {
+  background: var(--acid);
+  color: #071006;
+}
+
+.lab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.compare figure {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 280px;
+  margin: 0;
+  border: 1px solid var(--line-soft);
+  background: rgba(8, 12, 8, 0.72);
+}
+
+.compare figure.is-live {
+  border-color: rgba(198, 255, 74, 0.45);
+}
+
+.compare figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+}
+
+.compare figcaption b {
+  color: var(--acid);
+  font-weight: 500;
+}
+
+.compare .frame {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  max-height: 420px;
+  padding: 12px;
+  overflow: auto;
+}
+
+.compare .frame.binary {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.compare img {
+  max-width: 100%;
+  max-height: 390px;
+  object-fit: contain;
+}
+
+.compare pre {
+  width: 100%;
+  max-height: 390px;
+  margin: 0;
+  overflow: auto;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.entropy {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 100%;
+  height: 84px;
+}
+
+.entropy span {
+  flex: 1;
+  min-height: 2px;
+  background: var(--acid);
+  opacity: 0.78;
+}
+
+.hexdump {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.lab-lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(240px, 0.8fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.chart-block,
+.lab-side {
+  min-width: 0;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 8px;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 14px;
+  height: 2px;
+}
+
+.swatch.best {
+  background: var(--acid);
+}
+
+.swatch.candidate {
+  background: rgba(120, 227, 192, 0.7);
+}
+
+.score-chart {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line-soft);
+  background: rgba(8, 12, 8, 0.72);
+}
+
+.score-chart .grid {
+  stroke: rgba(232, 240, 227, 0.08);
+  stroke-width: 1;
+}
+
+.score-chart text {
+  fill: var(--dim);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.score-chart .candidate {
+  fill: none;
+  stroke: rgba(120, 227, 192, 0.55);
+  stroke-width: 1.25;
+}
+
+.score-chart .best {
+  fill: none;
+  stroke: var(--acid);
+  stroke-width: 1.8;
+}
+
+.score-chart .head {
+  fill: var(--acid);
+}
+
+.evolve-status,
+.evolve-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.evolve-status {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+.genome-rows {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-soft);
+  background: rgba(10, 15, 10, 0.55);
+}
+
+.genome-rows > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.genome-rows > div:last-child {
+  border-bottom: 0;
+}
+
+.genome-rows span {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: 0.12em;
+}
+
+.genome-rows b {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.lab-export {
+  margin-top: 12px;
+}
+
+.sheet-again:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 860px) {
+  .compare,
+  .lab-lower {
+    grid-template-columns: 1fr;
+  }
+}

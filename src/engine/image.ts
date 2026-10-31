@@ -270,7 +270,7 @@ export function createImageCloner(artifact: Artifact): Cloner {
       return {
         score: result.score,
         dataUrl: result.canvas.toDataURL("image/png"),
-        filename: `${baseName(artifact.name)}.clone.png`,
+        filename: `${baseName(artifact.name)}-clone.png`,
         mime: "image/png",
         facts: [
           { label: "PALETTE", value: `${result.colors} colors` },
