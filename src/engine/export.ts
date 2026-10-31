@@ -6,12 +6,18 @@ export const RECONSTRUCTION_EXT: Record<Kind, string> = {
   image: ".png",
   text: ".txt",
   binary: ".bin",
+  audio: ".wav",
+  pdf: ".pdf",
+  sheet: ".csv",
 };
 
 export const RECONSTRUCTION_MIME: Record<Kind, string> = {
   image: "image/png",
   text: "text/plain",
   binary: "application/octet-stream",
+  audio: "audio/wav",
+  pdf: "application/pdf",
+  sheet: "text/csv",
 };
 
 export interface ExportedFile {
@@ -34,12 +40,12 @@ export function exportReconstruction(
   if (kind === "text") {
     return { filename, mime, bytes: new TextEncoder().encode(output.text ?? "") };
   }
-  if (kind === "binary") {
-    if (!output.bytes) throw new Error("Binary clone has no bytes to export");
-    return { filename, mime, bytes: output.bytes };
+  if (kind === "image") {
+    if (!output.dataUrl) throw new Error("Image clone has no PNG to export");
+    return { filename, mime, bytes: decodePngDataUrl(output.dataUrl) };
   }
-  if (!output.dataUrl) throw new Error("Image clone has no PNG to export");
-  return { filename, mime, bytes: decodePngDataUrl(output.dataUrl) };
+  if (!output.bytes) throw new Error("Clone has no bytes to export");
+  return { filename, mime, bytes: output.bytes };
 }
 
 export function downloadBytes(bytes: Uint8Array, filename: string, mime: string): void {

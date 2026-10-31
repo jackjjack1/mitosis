@@ -2,6 +2,9 @@ import type { Artifact, Cloner } from "./types";
 import { createImageCloner } from "./image";
 import { createTextCloner } from "./text";
 import { createBinaryCloner } from "./binary";
+import { createAudioCloner } from "./audio";
+import { createPdfCloner } from "./pdf";
+import { createSheetCloner } from "./sheet";
 
 export { dissectFile } from "./dissect";
 export { readExact, saveExact } from "./exact";
@@ -41,10 +44,14 @@ export type {
 } from "./demangle";
 
 export {
+  adoptPopulation,
   advanceEvolution,
+  advancePopulation,
+  crossoverGenomes,
   startEvolution,
+  startPopulation,
 } from "./evolve";
-export type { EvolutionState, ScorePoint } from "./evolve";
+export type { EvolutionState, PopulationMember, ScorePoint, SearchMode } from "./evolve";
 export {
   downloadBytes,
   exportReconstruction,
@@ -69,6 +76,9 @@ export type { CloneSession } from "./session";
 export function createCloner(artifact: Artifact): Cloner {
   if (artifact.kind === "image" && artifact.image) return createImageCloner(artifact);
   if (artifact.kind === "text" && artifact.text) return createTextCloner(artifact);
+  if (artifact.kind === "audio" && artifact.audio) return createAudioCloner(artifact);
+  if (artifact.kind === "pdf" && artifact.pdf) return createPdfCloner(artifact);
+  if (artifact.kind === "sheet" && artifact.sheet) return createSheetCloner(artifact);
   return createBinaryCloner(artifact);
 }
 

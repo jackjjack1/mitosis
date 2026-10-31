@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createCloner } from "../engine";
 import type { EvolutionState } from "../engine/evolve";
-import { advanceEvolution, startEvolution } from "../engine/evolve";
+import {
+  adoptPopulation,
+  advanceEvolution,
+  advancePopulation,
+  startEvolution,
+  startPopulation,
+} from "../engine/evolve";
+import type { SearchMode } from "../engine/evolve";
 import { downloadBytes, exportReconstruction } from "../engine/export";
 import { CLONE_MIME, encodeCloneSession, sessionFilename } from "../engine/session";
 import type { Artifact, CloneOutput } from "../engine/types";
@@ -14,7 +21,14 @@ interface SpecimenBytes {
   bytes: Uint8Array;
 }
 
-const EXPORT_LABEL = { image: "PNG", text: "TXT", binary: "BIN" } as const;
+const EXPORT_LABEL = {
+  image: "PNG",
+  text: "TXT",
+  binary: "BIN",
+  audio: "WAV",
+  pdf: "PDF",
+  sheet: "CSV",
+} as const;
 
 export function CloneLab({
   artifact,
@@ -30,9 +44,10 @@ export function CloneLab({
   onRunning: (running: boolean) => void;
 }) {
   const cloner = useMemo(() => createCloner(artifact), [artifact]);
-  const [state, setState] = useState<EvolutionState>(
-    () => initial ?? startEvolution(cloner),
-  );
+  const [state, setState] = useState<EvolutionState>(() => {
+    if (initial) return initial.mode ? initial : { ...initial, mode: "hill" };
+    return startPopulation(cloner, { size: 6 });
+  });
   const [output, setOutput] = useState<CloneOutput>(() => cloner.materialize(state.genome));
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +74,10 @@ export function CloneLab({
     const tick = () => {
       if (cancel) return;
       const current = stateRef.current;
-      const next = advanceEvolution(cloner, current, Math.random);
+      const next =
+        current.mode === "hill"
+          ? advanceEvolution(cloner, current, Math.random)
+          : advancePopulation(cloner, current, Math.random);
       stateRef.current = next;
       setState(next);
       if (next.genome !== current.genome) {
@@ -96,7 +114,32 @@ export function CloneLab({
   }
 
   function stepOnce(): void {
-    commit(advanceEvolution(cloner, stateRef.current, Math.random));
+    const current = stateRef.current;
+    commit(
+      current.mode === "hill"
+        ? advanceEvolution(cloner, current, Math.random)
+        : advancePopulation(cloner, current, Math.random),
+    );
+  }
+
+  function chooseMode(next: SearchMode): void {
+    const current = stateRef.current;
+    if (next === "population") {
+      commit(adoptPopulation(cloner, { ...current, mode: "population" }, Math.random));
+      return;
+    }
+    const hill = startEvolution(cloner, current.genome);
+    commit({
+      ...current,
+      mode: "hill",
+      seed: current.seed,
+      genome: current.genome,
+      baseline: current.baseline,
+      score: current.score,
+      population: undefined,
+      populationSize: undefined,
+      history: current.history.length ? current.history : hill.history,
+    });
   }
 
   function exportClone(): void {
@@ -121,6 +164,7 @@ export function CloneLab({
 
   const latest = state.history[state.history.length - 1];
   const improved = Boolean(latest && latest.attempt > 0 && latest.accepted);
+  const population = state.mode !== "hill";
   const rows = cloner.describe(state.genome);
   const rowLabels = new Set(rows.map((row) => row.label));
   const facts = output.facts.filter((fact) => !rowLabels.has(fact.label));
@@ -137,6 +181,24 @@ export function CloneLab({
           </p>
         </div>
         <div className="sheet-actions">
+          <div className="view-switch search-switch" role="group" aria-label="Search">
+            <button
+              type="button"
+              aria-pressed={population}
+              onClick={() => chooseMode("population")}
+              disabled={running}
+            >
+              POPULATION
+            </button>
+            <button
+              type="button"
+              aria-pressed={!population}
+              onClick={() => chooseMode("hill")}
+              disabled={running}
+            >
+              HILL
+            </button>
+          </div>
           <button
             type="button"
             className="primary sheet-download"
@@ -157,18 +219,20 @@ export function CloneLab({
             <span>ORIGINAL</span>
             <b>SEED {percent(state.baseline, 1)}</b>
           </figcaption>
-          <div className={`frame ${artifact.kind === "binary" ? "binary" : ""}`}>
+          <div className={`frame ${frameClass(artifact.kind)}`}>
             <SpecimenView artifact={artifact} />
           </div>
         </figure>
         <figure className={running || improved ? "is-live" : ""}>
           <figcaption>
-            <span>CLONE · GEN {state.attempts}</span>
+            <span>
+              CLONE · {population ? "GEN" : "STEP"} {state.attempts}
+            </span>
             <b>
               {percent(state.score, 1)} {delta(state.score - state.baseline)}
             </b>
           </figcaption>
-          <div className={`frame ${artifact.kind === "binary" ? "binary" : ""}`}>
+          <div className={`frame ${frameClass(artifact.kind)}`}>
             <CloneView artifact={artifact} output={output} />
           </div>
         </figure>
@@ -178,13 +242,15 @@ export function CloneLab({
         <div className="chart-block">
           <div className="chart-legend">
             <span>
-              <i className="swatch best" /> BEST
+              <i className="swatch best" /> {population ? "ELITE" : "BEST"}
             </span>
             <span>
-              <i className="swatch candidate" /> CANDIDATE
+              <i className="swatch candidate" /> {population ? "MEAN" : "CANDIDATE"}
             </span>
             <span>
-              {state.accepted} ACCEPTED / {state.attempts} ATTEMPTS
+              {state.accepted} ACCEPTED / {state.attempts}{" "}
+              {population ? "GENERATIONS" : "ATTEMPTS"}
+              {population ? ` · POP ${state.populationSize ?? state.population?.length ?? 6}` : ""}
             </span>
           </div>
           <ScoreChart history={state.history} />
@@ -229,12 +295,26 @@ export function CloneLab({
   );
 }
 
+function frameClass(kind: Artifact["kind"]): string {
+  if (kind === "binary" || kind === "audio" || kind === "sheet") return "binary";
+  return "";
+}
+
 function SpecimenView({ artifact }: { artifact: Artifact }) {
   if (artifact.kind === "image" && artifact.previewUrl) {
     return <img src={artifact.previewUrl} alt={`Original ${artifact.name}`} />;
   }
   if (artifact.kind === "text") {
     return <pre>{artifact.text?.sample || "No text sample."}</pre>;
+  }
+  if (artifact.kind === "pdf") {
+    return <pre>{artifact.pdf?.text || "No extractable page text."}</pre>;
+  }
+  if (artifact.kind === "audio" && artifact.audio) {
+    return <AudioLook waveform={artifact.audio.waveform} spectrum={artifact.audio.spectrum} />;
+  }
+  if (artifact.kind === "sheet" && artifact.sheet) {
+    return <TableLook headers={artifact.sheet.headers} rows={artifact.sheet.rows} />;
   }
   return (
     <BinaryLook
@@ -248,10 +328,62 @@ function CloneView({ artifact, output }: { artifact: Artifact; output: CloneOutp
   if (artifact.kind === "image" && output.dataUrl) {
     return <img src={output.dataUrl} alt={`Reconstructed ${artifact.name}`} />;
   }
-  if (artifact.kind === "text") {
+  if (artifact.kind === "text" || artifact.kind === "pdf") {
     return <pre>{output.text || ""}</pre>;
   }
+  if (artifact.kind === "audio" && output.audioProfile) {
+    return (
+      <AudioLook
+        waveform={output.audioProfile.waveform}
+        spectrum={output.audioProfile.spectrum}
+      />
+    );
+  }
+  if (artifact.kind === "sheet" && output.table) {
+    return <TableLook headers={output.table.headers} rows={output.table.rows} />;
+  }
   return <BinaryLook bytes={output.bytes} entropy={output.binaryProfile?.entropy ?? []} />;
+}
+
+function AudioLook({ waveform, spectrum }: { waveform: number[]; spectrum: number[] }) {
+  return (
+    <div className="wave-stack">
+      <div className="entropy" aria-hidden="true">
+        {waveform.map((value, index) => (
+          <span key={index} style={{ height: `${Math.max(6, value * 100)}%` }} />
+        ))}
+      </div>
+      <div className="entropy spectrum" aria-hidden="true">
+        {spectrum.map((value, index) => (
+          <span key={index} style={{ height: `${Math.max(6, value * 100)}%` }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TableLook({ headers, rows }: { headers: string[]; rows: string[][] }) {
+  const shown = headers.slice(0, 6);
+  return (
+    <table className="data-table">
+      <thead>
+        <tr>
+          {shown.map((header) => (
+            <th key={header}>{header}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.slice(0, 8).map((row, index) => (
+          <tr key={index}>
+            {shown.map((header, cell) => (
+              <td key={header}>{row[cell] ?? ""}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 function BinaryLook({ bytes, entropy }: { bytes?: Uint8Array; entropy: number[] }) {

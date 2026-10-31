@@ -1,9 +1,15 @@
+import { looksLikeAudio, readAudioFile } from "./audio";
+import { extractPdfText, looksLikePdf } from "./pdf";
+import { looksLikeSheet, readSheet } from "./sheet";
 import type {
   Artifact,
+  AudioInfo,
   BinaryInfo,
   ImageInfo,
   Kind,
+  PdfInfo,
   SectionInfo,
+  SheetInfo,
   TextInfo,
 } from "./types";
 import { fmtBytes } from "./util";
@@ -669,6 +675,9 @@ export async function dissectFile(file: File): Promise<Artifact> {
   let image: ImageInfo | undefined;
   let text: TextInfo | undefined;
   let binary: BinaryInfo | undefined;
+  let audio: AudioInfo | undefined;
+  let pdf: PdfInfo | undefined;
+  let sheet: SheetInfo | undefined;
   let format = "";
   let previewUrl: string | undefined;
 
@@ -688,6 +697,36 @@ export async function dissectFile(file: File): Promise<Artifact> {
       if (info.hasAlpha) notes.push("ALPHA CHANNEL");
     } else {
       notes.push("IMAGE DECODE FAILED — FALLBACK");
+    }
+  }
+
+  if (kind === "binary" && looksLikePdf(bytes, file.name)) {
+    const extracted = await extractPdfText(bytes);
+    kind = "pdf";
+    format = "PDF";
+    pdf = { pages: extracted.pages, text: extracted.text, chars: extracted.text.length };
+    if (!extracted.text) notes.push("NO EXTRACTABLE TEXT");
+  }
+
+  if (kind === "binary" && looksLikeAudio(bytes, file.name)) {
+    const decoded = await readAudioFile(file, bytes);
+    if (decoded) {
+      kind = "audio";
+      format = decoded.format;
+      audio = decoded;
+      if (decoded.samples.length < bytes.length / 4) notes.push("AUDIO SAMPLE CAPPED");
+    } else {
+      notes.push("AUDIO DECODE FAILED — FALLBACK");
+    }
+  }
+
+  if (kind === "binary" && looksLikeSheet(file.name, mime)) {
+    const table = await readSheet(file, bytes);
+    if (table) {
+      kind = "sheet";
+      format = table.format;
+      sheet = table;
+      if (table.rows.length >= 200) notes.push("SAMPLE 200 ROWS");
     }
   }
 
@@ -731,5 +770,8 @@ export async function dissectFile(file: File): Promise<Artifact> {
     image,
     text,
     binary,
+    audio,
+    pdf,
+    sheet,
   };
 }

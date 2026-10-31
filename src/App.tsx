@@ -12,7 +12,14 @@ import { downloadEngineKit } from "./features/engineKit";
 import { CloneLab } from "./components/CloneLab";
 import { DropZone } from "./components/DropZone";
 import { FeatureSheet } from "./components/FeatureSheet";
-import { binarySpecimen, imageSpecimen, textSpecimen } from "./samples";
+import {
+  audioSpecimen,
+  binarySpecimen,
+  imageSpecimen,
+  pdfSpecimen,
+  sheetSpecimen,
+  textSpecimen,
+} from "./samples";
 
 type ResultView = "features" | "evolve";
 
@@ -168,7 +175,9 @@ export default function App() {
     };
   }, []);
 
-  async function handleSample(kind: "image" | "text" | "binary"): Promise<void> {
+  async function handleSample(
+    kind: "image" | "text" | "binary" | "audio" | "pdf" | "sheet",
+  ): Promise<void> {
     try {
       setError(null);
       const file =
@@ -176,7 +185,13 @@ export default function App() {
           ? await imageSpecimen()
           : kind === "text"
             ? textSpecimen()
-            : binarySpecimen();
+            : kind === "audio"
+              ? audioSpecimen()
+              : kind === "pdf"
+                ? pdfSpecimen()
+                : kind === "sheet"
+                  ? sheetSpecimen()
+                  : binarySpecimen();
       await ingest(file);
     } catch (caught) {
       setError(`Could not build the sample — ${errorText(caught)}`);

@@ -1,4 +1,12 @@
+import { encodeWav } from "./engine/audio";
+import { buildPdf } from "./engine/pdf";
 import { mulberry32 } from "./engine/util";
+
+function fileBytes(bytes: Uint8Array, name: string, type: string): File {
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return new File([copy], name, { type });
+}
 
 async function canvasToFile(canvas: HTMLCanvasElement, name: string): Promise<File> {
   const blob = await new Promise<Blob | null>((resolve) =>
@@ -212,4 +220,42 @@ export function binarySpecimen(): File {
   bytes.set(marker.slice(0, Math.max(0, total - cursor)), cursor);
 
   return new File([bytes], "specimen.bin", { type: "application/octet-stream" });
+}
+
+export function audioSpecimen(): File {
+  const sampleRate = 8000;
+  const length = 4000;
+  const samples = new Float32Array(length);
+  for (let i = 0; i < length; i++) {
+    const t = i / sampleRate;
+    const envelope = 0.35 + 0.65 * Math.abs(Math.sin(2 * Math.PI * 3 * t));
+    samples[i] =
+      envelope *
+      (0.7 * Math.sin(2 * Math.PI * 220 * t) + 0.35 * Math.sin(2 * Math.PI * 660 * t));
+  }
+  return fileBytes(encodeWav(samples, sampleRate), "specimen-tone.wav", "audio/wav");
+}
+
+export function pdfSpecimen(): File {
+  return fileBytes(
+    buildPdf(
+      "Field notes. The cell divides. The table holds the mass of every trial. A page remembers the order of the words and the margin where the pencil stopped.",
+      12,
+    ),
+    "specimen-page.pdf",
+    "application/pdf",
+  );
+}
+
+export function sheetSpecimen(): File {
+  const csv = [
+    "trial,mass,note",
+    "01,1.2,alpha",
+    "02,1.8,beta",
+    "03,2.1,alpha",
+    "04,2.6,gamma",
+    "05,3.0,beta",
+    "06,3.4,gamma",
+  ].join("\n");
+  return new File([csv], "specimen-table.csv", { type: "text/csv" });
 }

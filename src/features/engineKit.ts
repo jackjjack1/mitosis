@@ -13,6 +13,9 @@ import featuresSource from "../engine/features.ts?raw";
 import evolveSource from "../engine/evolve.ts?raw";
 import sessionSource from "../engine/session.ts?raw";
 import exportSource from "../engine/export.ts?raw";
+import audioSource from "../engine/audio.ts?raw";
+import pdfSource from "../engine/pdf.ts?raw";
+import sheetSource from "../engine/sheet.ts?raw";
 import { zipStore } from "./zip";
 
 const README = [
@@ -56,6 +59,9 @@ const README = [
   "`exportReconstruction` turns the current clone into PNG, text, or raw",
   "bytes. `encodeCloneSession` / `decodeCloneSession` save and reopen that",
   "run as a versioned `.clone` file (UTI `io.freebuff.mitosis.clone`).",
+  "`startPopulation` / `advancePopulation` add crossover and selection.",
+  "`advanceEvolution` remains the single-genome hill climb.",
+  "Audio, PDF, and spreadsheet artifacts select their own cloners.",
   "",
   "## Usable features",
   "",
@@ -167,6 +173,10 @@ const MANIFEST = `${JSON.stringify(
       "single-genome evolution history",
       "png/txt/bin reconstruction export",
       "versioned .clone sessions",
+      "audio wav/mp3 cloner",
+      "pdf cloner",
+      "spreadsheet csv/xlsx cloner",
+      "population crossover",
     ],
     source: "https://github.com/jackjjack1/mitosis",
   },
@@ -198,6 +208,9 @@ export function buildEngineKit(): Blob {
     { name: "engine/evolve.ts", data: encode(evolveSource) },
     { name: "engine/session.ts", data: encode(sessionSource) },
     { name: "engine/export.ts", data: encode(exportSource) },
+    { name: "engine/audio.ts", data: encode(audioSource) },
+    { name: "engine/pdf.ts", data: encode(pdfSource) },
+    { name: "engine/sheet.ts", data: encode(sheetSource) },
   ]);
 }
 

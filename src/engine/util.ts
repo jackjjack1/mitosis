@@ -1,3 +1,10 @@
+/** A standalone ArrayBuffer, safe to hand to Blob and File. */
+export function arrayBufferOf(bytes: Uint8Array): ArrayBuffer {
+  const copy = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(copy).set(bytes);
+  return copy;
+}
+
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }

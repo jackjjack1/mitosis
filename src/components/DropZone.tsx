@@ -9,7 +9,7 @@ export function DropZone({
   error: string | null;
   dragging: boolean;
   onBrowse: () => void;
-  onSample: (kind: "image" | "text" | "binary") => void;
+  onSample: (kind: "image" | "text" | "binary" | "audio" | "pdf" | "sheet") => void;
 }) {
   return (
     <section className="empty-state">
@@ -84,6 +84,15 @@ export function DropZone({
         </button>
         <button type="button" onClick={() => onSample("binary")} disabled={loading}>
           UNKNOWN BINARY
+        </button>
+        <button type="button" onClick={() => onSample("audio")} disabled={loading}>
+          WAVE
+        </button>
+        <button type="button" onClick={() => onSample("pdf")} disabled={loading}>
+          PAGE
+        </button>
+        <button type="button" onClick={() => onSample("sheet")} disabled={loading}>
+          TABLE
         </button>
       </div>
     </section>

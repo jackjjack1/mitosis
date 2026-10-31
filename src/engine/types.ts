@@ -1,4 +1,4 @@
-export type Kind = "image" | "text" | "binary";
+export type Kind = "image" | "text" | "binary" | "audio" | "pdf" | "sheet";
 
 /** A cloning genome is a flat bag of numeric hyperparameters. */
 export type Genome = Record<string, number>;
@@ -23,6 +23,8 @@ export interface CloneOutput {
   mime?: string;
   facts: { label: string; value: string }[];
   binaryProfile?: { entropy: number[]; histogram: number[] };
+  audioProfile?: { waveform: number[]; spectrum: number[] };
+  table?: { headers: string[]; rows: string[][] };
 }
 
 export interface Cloner {
@@ -69,6 +71,29 @@ export interface BinaryInfo {
   headerInfo: [string, string][];
 }
 
+export interface AudioInfo {
+  format: string;
+  sampleRate: number;
+  channels: number;
+  duration: number;
+  waveform: number[];
+  spectrum: number[];
+  samples: number[];
+  rms: number;
+}
+
+export interface PdfInfo {
+  pages: number;
+  text: string;
+  chars: number;
+}
+
+export interface SheetInfo {
+  format: string;
+  headers: string[];
+  rows: string[][];
+}
+
 export interface Artifact {
   name: string;
   size: number;
@@ -83,6 +108,9 @@ export interface Artifact {
   image?: ImageInfo;
   text?: TextInfo;
   binary?: BinaryInfo;
+  audio?: AudioInfo;
+  pdf?: PdfInfo;
+  sheet?: SheetInfo;
 }
 
 export interface MemoryEntry {

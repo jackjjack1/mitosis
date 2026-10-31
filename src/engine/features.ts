@@ -549,6 +549,101 @@ function binaryFeatures(artifact: Artifact): { features: Feature[]; files: Featu
   };
 }
 
+/* ---------- stage 2 kinds ---------------------------------------------- */
+
+function audioFeatures(artifact: Artifact): { features: Feature[]; files: FeatureFile[] } {
+  const audio = artifact.audio;
+  if (!audio) return { features: [], files: [] };
+  const profile = {
+    format: audio.format,
+    sampleRate: audio.sampleRate,
+    channels: audio.channels,
+    duration: audio.duration,
+    rms: audio.rms,
+    spectrum: audio.spectrum,
+  };
+  return {
+    features: [
+      {
+        id: "waveform",
+        label: "WAVEFORM",
+        title: "Loudness contour",
+        detail: `${audio.waveform.length} peaks over ${audio.duration.toFixed(2)} s at ${audio.sampleRate} Hz.`,
+        copy: audio.waveform.map((value) => value.toFixed(4)).join("\n"),
+        copyLabel: "TEXT",
+        files: ["waveform.txt"],
+      },
+      {
+        id: "spectrum",
+        label: "SPECTRUM",
+        title: "Spectral shape",
+        detail: `${audio.spectrum.length} magnitude bins, RMS ${audio.rms.toFixed(3)}.`,
+        copy: json(profile),
+        copyLabel: "JSON",
+        files: ["spectrum.json"],
+      },
+    ],
+    files: [
+      { name: "waveform.txt", content: `${audio.waveform.map((value) => value.toFixed(4)).join("\n")}\n` },
+      { name: "spectrum.json", content: json(profile) },
+    ],
+  };
+}
+
+function pdfFeatures(artifact: Artifact): { features: Feature[]; files: FeatureFile[] } {
+  const pdf = artifact.pdf;
+  if (!pdf) return { features: [], files: [] };
+  return {
+    features: [
+      {
+        id: "page-text",
+        label: "PAGE TEXT",
+        title: "Extracted page text",
+        detail: `${pdf.pages} page${pdf.pages === 1 ? "" : "s"} · ${pdf.chars.toLocaleString()} characters.`,
+        copy: trimmed(pdf.text || "No extractable text."),
+        copyLabel: "TEXT",
+        files: ["page-text.txt"],
+      },
+    ],
+    files: [
+      { name: "page-text.txt", content: `${pdf.text}\n` },
+      { name: "pages.json", content: json({ pages: pdf.pages, chars: pdf.chars }) },
+    ],
+  };
+}
+
+function sheetFeatures(artifact: Artifact): { features: Feature[]; files: FeatureFile[] } {
+  const sheet = artifact.sheet;
+  if (!sheet) return { features: [], files: [] };
+  const preview = [sheet.headers.join(","), ...sheet.rows.slice(0, 12).map((row) => row.join(","))].join("\n");
+  return {
+    features: [
+      {
+        id: "columns",
+        label: "COLUMNS",
+        title: "Table schema",
+        detail: `${sheet.headers.length} columns · ${sheet.rows.length} rows.`,
+        copy: json({ format: sheet.format, headers: sheet.headers, rows: sheet.rows.length }),
+        copyLabel: "JSON",
+        files: ["columns.json"],
+      },
+      {
+        id: "preview",
+        label: "PREVIEW",
+        title: "First rows",
+        detail: sheet.headers.slice(0, 6).join(" · ") || "Empty sheet",
+        copy: preview,
+        copyLabel: "CSV",
+        files: ["preview.csv"],
+      },
+    ],
+    files: [
+      { name: "columns.json", content: json({ format: sheet.format, headers: sheet.headers, rows: sheet.rows.length }) },
+      { name: "preview.csv", content: `${preview}\n` },
+    ],
+  };
+}
+
 /* ---------- assembly ---------------------------------------------------- */
 
 export function extractFeatures(
@@ -561,7 +656,13 @@ export function extractFeatures(
       ? imageFeatures(artifact)
       : artifact.kind === "text"
         ? textFeatures(artifact)
-        : binaryFeatures(artifact);
+        : artifact.kind === "audio"
+          ? audioFeatures(artifact)
+          : artifact.kind === "pdf"
+            ? pdfFeatures(artifact)
+            : artifact.kind === "sheet"
+              ? sheetFeatures(artifact)
+              : binaryFeatures(artifact);
 
   const summary: { label: string; value: string }[] = [
     { label: "FORMAT", value: artifact.format },
@@ -584,6 +685,21 @@ export function extractFeatures(
     summary.push(
       { label: "WORDS", value: artifact.text.words.toLocaleString() },
       { label: "LINES", value: artifact.text.lines.toLocaleString() },
+    );
+  } else if (artifact.kind === "audio" && artifact.audio) {
+    summary.push(
+      { label: "RATE", value: `${artifact.audio.sampleRate} Hz` },
+      { label: "DURATION", value: `${artifact.audio.duration.toFixed(2)} s` },
+    );
+  } else if (artifact.kind === "pdf" && artifact.pdf) {
+    summary.push(
+      { label: "PAGES", value: `${artifact.pdf.pages}` },
+      { label: "CHARS", value: artifact.pdf.chars.toLocaleString() },
+    );
+  } else if (artifact.kind === "sheet" && artifact.sheet) {
+    summary.push(
+      { label: "COLUMNS", value: `${artifact.sheet.headers.length}` },
+      { label: "ROWS", value: `${artifact.sheet.rows.length}` },
     );
   } else if (artifact.binary) {
     summary.push(
