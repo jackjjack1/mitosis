@@ -56,7 +56,14 @@ Every result also includes `artifact.json`, `features.json`, and a `README.md` d
 | Image reconstruction | `<name>-clone.png` |
 | Text reconstruction | `<name>-clone.txt` |
 | Binary reconstruction | `<name>-clone.bin` |
+| Audio reconstruction | `<name>-clone.wav` |
+| PDF reconstruction | `<name>-clone.pdf` |
+| Spreadsheet reconstruction | `<name>-clone.csv` |
 | Evolution session | `<name>.clone` |
+
+WAV and MP3 are read as audio. PCM WAV is parsed directly. MP3 and other compressed audio use Web Audio `decodeAudioData` when the browser can decode them. PDF text is taken from page operators, including FlateDecode streams. CSV, TSV, and xlsx sheets become a table. The evolve view draws a waveform and spectrum, the extracted page text, or the table beside its reconstruction.
+
+**POPULATION** searches several genomes at once: each generation keeps the elite, crosses two selected parents, and mutates the child. The chart's upper line is the elite and the lower line is the population mean. **HILL** is the original one-genome climb. A `.clone` session records the mode and, for a population run, the current members. Version 1 readers that do not know those fields still open the elite genome.
 
 ### `.clone` sessions
 
@@ -98,16 +105,17 @@ npm run release:prepare -- 0.2.0 --commit    # commit and tag, push later
 
 `--commit` refuses to run on a dirty working tree so the bump stays a commit of its own, refuses a detached HEAD, and refuses a version that is already current or whose tag exists. The release workflow re-checks that the tag matches the files before it builds, so a mistagged release stops early instead of publishing an app that reports a different version.
 
-## Where later stages fit
+## Where stage 3 fits
 
-Stage 1 is one genome, one embedded specimen, and a chart of that climb.
+Stage 2 adds audio, PDF, and spreadsheet cloners, plus a population search that sits beside the hill climb. The session is still one embedded specimen.
 
-- **More file types** (audio, PDF, spreadsheets): add a `Kind`, a cloner next to the image, text, and binary ones, and a branch in `createCloner`. Add the download extension to `RECONSTRUCTION_EXT`. The session stays version 1 for as long as the payload is still the original bytes.
-- **Population and crossover**: replace the body of `advanceEvolution`. The chart already plots `ScorePoint.best`, so a generation can record its elite without a new UI contract. A population archive that changes the payload uses a new flags value and a new version. Version 1 readers reject it.
-- **Memory seeding and sync**: `startEvolution(cloner, seed)` already accepts a genome. `recallMemories` can supply one from a past run. File or cloud sync writes the same `.clone` bytes. A session that points at an external specimen, instead of embedding it, needs a new flags value.
-- **Batch and folders**: one `.clone` per specimen. A folder run is a directory of those files.
-- **AI description**: `Cloner.reflect` is the summary. An extra header key such as `note` is ignored by version 1 readers, so the description can be stored without a version bump.
-- **Distribution**: the Mac app already owns the `.clone` type. A CLI or website calls `encodeCloneSession`, `decodeCloneSession`, and `exportReconstruction`. Signing and notarizing stay in the release workflow.
+Stage 3 is memory seeding, sync, and batch mode. It needs:
+
+- **Seeding from past runs.** `recallMemories` already ranks saved genomes. The lab should offer those as the `seed` argument to `startEvolution` and `startPopulation`, then call `recordRun` when a run pauses. No format change.
+- **File and cloud sync.** The `.clone` bytes are the sync payload. A copy that points at an external specimen, instead of embedding it, needs a non-zero flags word and a new version. Version 1 readers reject that on purpose. Cloud sync is a transport for the same file, not a second format.
+- **Batch and folders.** One `.clone` per specimen. A folder run is a queue of files plus a directory of sessions. The UI needs a multi-file picker and a list of runs. `advancePopulation` and `advanceEvolution` stay the per-file step.
+
+Later still: an AI note can be an extra header key such as `note`, which version 1 readers ignore. A CLI calls `encodeCloneSession`, `decodeCloneSession`, and `exportReconstruction`. Signing stays in the release workflow.
 
 ## Honest limits
 
@@ -124,7 +132,7 @@ src/engine/     dissection, Mach-O reports, feature extraction, clone engines, e
 src/features/   feature bundle, ZIP writer, engine-kit export
 src/components/ drop zone, feature sheet, evolution lab, score chart
 src/App.tsx     drop → features, or evolve and export
-src/samples.ts  built-in image, text, and binary specimens
+src/samples.ts  built-in image, text, binary, audio, PDF, and spreadsheet specimens
 desktop/        native macOS shell, Info.plist, icon generator
 scripts/        desktop build, inlining, smoke probe and assertions, version check and release prep
 ```

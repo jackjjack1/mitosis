@@ -305,7 +305,10 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
         let reconstruction =
             suggestedFilename.hasSuffix(".png") ||
             suggestedFilename.hasSuffix(".txt") ||
-            suggestedFilename.hasSuffix(".bin")
+            suggestedFilename.hasSuffix(".bin") ||
+            suggestedFilename.hasSuffix(".wav") ||
+            suggestedFilename.hasSuffix(".pdf") ||
+            suggestedFilename.hasSuffix(".csv")
         panel.title = reportDownload
             ? "Save Analysis Report"
             : featureBundle

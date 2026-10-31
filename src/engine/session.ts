@@ -1,4 +1,4 @@
-import type { EvolutionState, ScorePoint } from "./evolve";
+import type { EvolutionState, PopulationMember, ScorePoint, SearchMode } from "./evolve";
 import type { Genome } from "./types";
 import { baseName } from "./util";
 
@@ -81,6 +81,11 @@ export function encodeCloneSession(session: CloneSession): Uint8Array {
       attempts: session.evolution.attempts,
       accepted: session.evolution.accepted,
       history: session.evolution.history,
+      ...(session.evolution.mode ? { mode: session.evolution.mode } : {}),
+      ...(session.evolution.population ? { population: session.evolution.population } : {}),
+      ...(session.evolution.populationSize
+        ? { populationSize: session.evolution.populationSize }
+        : {}),
     },
   };
   const json = new TextEncoder().encode(JSON.stringify(header));
@@ -148,6 +153,12 @@ export function decodeCloneSession(bytes: Uint8Array): CloneSession {
   }
 
   const evolution = readEvolution(header.evolution);
+  const mode = readMode(header.evolution);
+  const population = readPopulation(header.evolution);
+  const populationSize = readPopulationSize(header.evolution);
+  if (mode) evolution.mode = mode;
+  if (population) evolution.population = population;
+  if (populationSize !== undefined) evolution.populationSize = populationSize;
   return {
     version: 1,
     savedAt: header.savedAt,
@@ -166,6 +177,40 @@ interface HeaderFields {
   savedAt?: unknown;
   specimen?: { name?: unknown; mime?: unknown; size?: unknown };
   evolution?: unknown;
+}
+
+function evolutionRow(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object") return {};
+  return value as Record<string, unknown>;
+}
+
+function readMode(value: unknown): SearchMode | undefined {
+  const mode = evolutionRow(value).mode;
+  if (mode === undefined) return undefined;
+  if (mode === "hill" || mode === "population") return mode;
+  throw new CloneFormatError("Invalid evolution mode");
+}
+
+function readPopulationSize(value: unknown): number | undefined {
+  const size = evolutionRow(value).populationSize;
+  if (size === undefined) return undefined;
+  return readNumber(size, "populationSize");
+}
+
+function readPopulation(value: unknown): PopulationMember[] | undefined {
+  const population = evolutionRow(value).population;
+  if (population === undefined) return undefined;
+  if (!Array.isArray(population)) throw new CloneFormatError("Invalid population");
+  return population.map((member, index) => {
+    if (!member || typeof member !== "object") {
+      throw new CloneFormatError(`Invalid population member ${index}`);
+    }
+    const row = member as Record<string, unknown>;
+    return {
+      genome: readGenome(row.genome, `population ${index}`),
+      score: readNumber(row.score, `population ${index} score`),
+    };
+  });
 }
 
 function readEvolution(value: unknown): EvolutionState {
