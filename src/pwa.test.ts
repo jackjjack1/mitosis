@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { pickTarget, shouldRegisterServiceWorker } from "./pwa";
+import { manifestDocument, pickTarget, PAGES_BASE, serviceWorkerSource, shouldRegisterServiceWorker } from "./pwa";
 
 const root = new URL("../", import.meta.url);
 
@@ -54,12 +54,26 @@ describe("installable phone build", () => {
     expect(css).toContain("min-height: 48px");
   });
 
-  it("deploys the Vite build as static files", () => {
-    const config = JSON.parse(readFileSync(new URL("vercel.json", root), "utf8")) as {
-      buildCommand: string;
-      outputDirectory: string;
-    };
-    expect(config.buildCommand).toBe("npm run build");
-    expect(config.outputDirectory).toBe("dist");
+  it("scopes the installed app to the GitHub Pages subpath", () => {
+    const manifest = manifestDocument(PAGES_BASE);
+    expect(manifest.start_url).toBe("/mitosis/");
+    expect(manifest.scope).toBe("/mitosis/");
+    expect(manifest.icons[0].src).toBe("/mitosis/icons/icon-192.png");
+
+    const worker = serviceWorkerSource(PAGES_BASE);
+    expect(worker).toContain('"/mitosis/"');
+    expect(worker).toContain("/mitosis/index.html");
+    expect(worker).not.toContain('"./index.html"');
+  });
+
+  it("deploys dist to GitHub Pages from main", () => {
+    const workflow = readFileSync(new URL(".github/workflows/pages.yml", root), "utf8");
+    expect(workflow).toContain("actions/deploy-pages@v4");
+    expect(workflow).toContain("actions/upload-pages-artifact@v4");
+    expect(workflow).toContain("VITE_BASE: /mitosis/");
+    expect(workflow).toContain("branches:");
+    expect(workflow).toContain("- main");
+    const viteConfig = readFileSync(new URL("vite.config.ts", root), "utf8");
+    expect(viteConfig).toContain("VITE_BASE");
   });
 });
