@@ -11,7 +11,7 @@ import {
 import type { SearchMode } from "../engine/evolve";
 import { downloadBytes, exportReconstruction } from "../engine/export";
 import { CLONE_MIME, encodeCloneSession, sessionFilename } from "../engine/session";
-import type { Artifact, CloneOutput } from "../engine/types";
+import type { Artifact, CloneOutput, Genome } from "../engine/types";
 import { delta, percent } from "../engine/util";
 import { ScoreChart } from "./ScoreChart";
 
@@ -34,29 +34,55 @@ export function CloneLab({
   artifact,
   specimen,
   initial,
+  memorySeed,
+  memoryLabel,
   onEvolution,
   onRunning,
+  onPause,
 }: {
   artifact: Artifact;
   specimen: SpecimenBytes;
   initial: EvolutionState | null;
+  memorySeed?: Genome | null;
+  memoryLabel?: string | null;
   onEvolution: (state: EvolutionState) => void;
   onRunning: (running: boolean) => void;
+  onPause?: (state: EvolutionState) => void;
 }) {
   const cloner = useMemo(() => createCloner(artifact), [artifact]);
   const [state, setState] = useState<EvolutionState>(() => {
     if (initial) return initial.mode ? initial : { ...initial, mode: "hill" };
-    return startPopulation(cloner, { size: 6 });
+    return startPopulation(cloner, { size: 6, seed: memorySeed ?? undefined });
   });
   const [output, setOutput] = useState<CloneOutput>(() => cloner.materialize(state.genome));
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seedLabel] = useState(memoryLabel ?? null);
   const stateRef = useRef(state);
   stateRef.current = state;
   const onEvolutionRef = useRef(onEvolution);
   onEvolutionRef.current = onEvolution;
+  const onPauseRef = useRef(onPause);
+  onPauseRef.current = onPause;
   const onRunningRef = useRef(onRunning);
   onRunningRef.current = onRunning;
+  const rememberedAttempts = useRef(initial?.attempts ?? 0);
+
+  useEffect(() => {
+    if (running) return;
+    if (state.attempts <= rememberedAttempts.current) return;
+    rememberedAttempts.current = state.attempts;
+    onPauseRef.current?.(state);
+  }, [running, state]);
+
+  useEffect(() => {
+    return () => {
+      if (stateRef.current.attempts > rememberedAttempts.current) {
+        rememberedAttempts.current = stateRef.current.attempts;
+        onPauseRef.current?.(stateRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     onEvolutionRef.current(state);
@@ -175,6 +201,7 @@ export function CloneLab({
         <div className="sheet-copy">
           <p className="eyebrow">EVOLVE / {artifact.format}</p>
           <h2 title={artifact.name}>{artifact.name}</h2>
+          {seedLabel ? <p className="seed-note">SEEDED FROM {seedLabel}</p> : null}
           <p className="lede">
             The original stays on the left. The reconstruction on the right updates
             each time a generation scores higher. Nothing is uploaded.

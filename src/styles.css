@@ -176,6 +176,8 @@ button:focus-visible,
   align-items: center;
   gap: 24px;
   min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .lab-status {
@@ -1191,6 +1193,10 @@ button:focus-visible,
   border: 1px solid var(--line-soft);
 }
 
+.sheet-actions .view-switch {
+  margin-bottom: 0;
+}
+
 .view-switch button {
   padding: 8px 14px;
   border: 0;
@@ -1451,6 +1457,61 @@ button:focus-visible,
 .search-switch button[aria-pressed="true"] {
   background: var(--acid);
   color: #071006;
+}
+
+.seed-note {
+  margin: 0 0 12px;
+  color: var(--acid);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.batch-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+}
+
+.batch-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.batch-list li:last-child {
+  border-bottom: 0;
+}
+
+.batch-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-list b {
+  flex: none;
+  color: var(--dim);
+  font-weight: 500;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+.batch-list li.done b {
+  color: var(--acid);
+}
+
+.batch-list li.error b {
+  color: var(--red);
+}
+
+.batch-list li.running b {
+  color: var(--teal);
 }
 
 .wave-stack {

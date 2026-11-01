@@ -301,7 +301,9 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
             suggestedFilename.hasSuffix(".json") ||
             suggestedFilename.hasSuffix(".md")
         let featureBundle = suggestedFilename.hasSuffix(".zip")
+        let batchArchive = suggestedFilename.contains("mitosis-batch")
         let cloneSession = suggestedFilename.hasSuffix(".clone")
+        let mindFile = suggestedFilename.hasSuffix(".mind")
         let reconstruction =
             suggestedFilename.hasSuffix(".png") ||
             suggestedFilename.hasSuffix(".txt") ||
@@ -311,22 +313,30 @@ final class MitosisWindowController: NSWindowController, WKNavigationDelegate, W
             suggestedFilename.hasSuffix(".csv")
         panel.title = reportDownload
             ? "Save Analysis Report"
-            : featureBundle
-                ? "Save Features"
-                : cloneSession
-                    ? "Save Clone Session"
-                    : reconstruction
-                        ? "Save Reconstruction"
-                        : "Save Download"
+            : batchArchive
+                ? "Save Batch"
+                : featureBundle
+                    ? "Save Features"
+                    : cloneSession
+                        ? "Save Clone Session"
+                        : mindFile
+                            ? "Save Memory"
+                            : reconstruction
+                                ? "Save Reconstruction"
+                                : "Save Download"
         panel.message = reportDownload
             ? "Save the local Mach-O analysis report."
-            : featureBundle
-                ? "Save the extracted features bundle."
-                : cloneSession
-                    ? "Save this evolution run. Open the .clone file later to continue."
-                    : reconstruction
-                        ? "Save the reconstructed clone."
-                        : "Save the downloaded file."
+            : batchArchive
+                ? "Save one .clone session per file, plus the summary report."
+                : featureBundle
+                    ? "Save the extracted features bundle."
+                    : cloneSession
+                        ? "Save this evolution run. Open the .clone file later to continue."
+                        : mindFile
+                            ? "Save the memory bank. Import it on another machine to keep seeding."
+                            : reconstruction
+                                ? "Save the reconstructed clone."
+                                : "Save the downloaded file."
         panel.prompt = "Save"
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = downloadFilename(suggestedFilename)
