@@ -70,7 +70,7 @@ export function DropZone({
               : "DRAG A FILE FROM ANYWHERE"}
         </p>
         <p className="drop-sub">
-          or click to browse <span>·</span> any format <span>·</span> stays on this
+          or tap to choose a file <span>·</span> any format <span>·</span> stays on this
           device
         </p>
         <span className="plate-code">ONE FILE IN / USABLE PARTS OUT</span>

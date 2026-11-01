@@ -29,6 +29,7 @@ import type { MindSync } from "./engine/memory";
 import { CloneFormatError, decodeCloneSession, isCloneSession } from "./engine/session";
 import type { Artifact, Mind } from "./engine/types";
 import { downloadEngineKit } from "./features/engineKit";
+import { pickTarget } from "./pwa";
 import {
   audioSpecimen,
   binarySpecimen,
@@ -482,7 +483,12 @@ export default function App() {
               setError(null);
               setBatch([textSpecimen(), sheetSpecimen(), pdfSpecimen()]);
             }}
-            onFolder={() => folderInput.current?.click()}
+            onFolder={() => {
+              const folderSupported =
+                folderInput.current != null && "webkitdirectory" in HTMLInputElement.prototype;
+              if (pickTarget(folderSupported) === "folder") folderInput.current?.click();
+              else fileInput.current?.click();
+            }}
           />
         )}
       </main>
