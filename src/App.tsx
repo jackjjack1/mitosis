@@ -347,11 +347,15 @@ export default function App() {
 
   const recalled = result && !result.evolution ? seedFromMemory(mind, result.artifact) : null;
 
+  function showLab(): void {
+    setNotice(null);
+    setBatch(null);
+    setResult(null);
+  }
+
   return (
     <div className="app">
-      <div className="backdrop" aria-hidden="true" />
-
-      <header className="topbar">
+      <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark" aria-hidden="true">
             <span />
@@ -359,36 +363,62 @@ export default function App() {
           </div>
           <div className="brand-text">
             <h1>MITOSIS</h1>
-            <p>drop a file · take the parts</p>
+            <p>local lab</p>
           </div>
         </div>
 
-        <div className="topbar-right">
+        <nav className="side-nav" aria-label="Lab">
+          <button type="button" className={!result && !batch ? "is-active" : ""} onClick={showLab}>
+            Lab
+          </button>
+          <button
+            type="button"
+            className={result && !batch && result.view === "features" ? "is-active" : ""}
+            disabled={!result}
+            onClick={() => {
+              setBatch(null);
+              setView("features");
+            }}
+          >
+            Features
+          </button>
+          <button
+            type="button"
+            className={result && !batch && result.view === "evolve" ? "is-active" : ""}
+            disabled={!result}
+            onClick={() => {
+              setBatch(null);
+              setView("evolve");
+            }}
+          >
+            Evolve
+          </button>
+          <button
+            type="button"
+            className={batch ? "is-active" : ""}
+            disabled={!batch}
+            onClick={() => setBatch(batch)}
+          >
+            Batch
+          </button>
+        </nav>
+
+        <div className="side-foot">
           <div className={`lab-status ${evolving ? "is-live" : ""}`}>
             <i className="pulse-dot" />
-            {evolving ? "EVOLVING · LOCAL" : `MIND ${mind.memories.length} · REV ${sync.revision}`}
+            {evolving ? "Evolving" : `${mind.memories.length} memories · rev ${sync.revision}`}
           </div>
-          <button type="button" className="reset-mind" onClick={exportMind} title="Export the memory bank">
-            EXPORT MIND
+          <button type="button" className="reset-mind" onClick={exportMind}>
+            Export mind
           </button>
-          <button
-            type="button"
-            className="reset-mind"
-            onClick={() => fileInput.current?.click()}
-            title="Import a .mind file or open specimens"
-          >
-            IMPORT
+          <button type="button" className="reset-mind" onClick={() => fileInput.current?.click()}>
+            Import
           </button>
-          <button
-            type="button"
-            className="reset-mind"
-            onClick={downloadEngineKit}
-            title="Download the MITOSIS dissection engine as TypeScript"
-          >
-            ENGINE KIT .ZIP
+          <button type="button" className="reset-mind" onClick={downloadEngineKit}>
+            Engine kit
           </button>
         </div>
-      </header>
+      </aside>
 
       <main className="simple-shell">
         {notice && !batch && <p className="seed-note">{notice}</p>}
@@ -401,29 +431,6 @@ export default function App() {
           />
         ) : result ? (
           <>
-            <div className="sheet-actions">
-              <div className="view-switch" role="tablist" aria-label="Result">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={result.view === "features"}
-                  onClick={() => setView("features")}
-                >
-                  FEATURES
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={result.view === "evolve"}
-                  onClick={() => setView("evolve")}
-                >
-                  EVOLVE
-                </button>
-              </div>
-              <button type="button" className="sheet-again" onClick={() => { setNotice(null); setResult(null); }}>
-                NEW
-              </button>
-            </div>
             {result.view === "features" ? (
               <FeatureSheet
                 artifact={result.artifact}
