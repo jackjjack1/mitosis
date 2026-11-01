@@ -17,6 +17,8 @@ Open the printed local URL. Drop a file on the window, or click the plate to bro
 npm run build
 ```
 
+The production build is a static site. `vercel.json` publishes `dist` on Vercel. On an iPhone, open the site in Safari, tap Share, then Add to Home Screen. The installed app works offline after the first visit. Tap the plate to open the file picker. A folder drop is a multi-file pick when Safari has no folder browser.
+
 ## Desktop app (macOS)
 
 ```bash

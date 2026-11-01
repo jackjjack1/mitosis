@@ -33,7 +33,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-button { font-family: inherit; }
+button { font-family: inherit; touch-action: manipulation; }
 
 button:focus-visible,
 [role="button"]:focus-visible {
@@ -48,7 +48,16 @@ button:focus-visible,
   min-height: 100vh;
 }
 
-.file-input { display: none; }
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 
 .sidebar {
   position: sticky;
@@ -667,20 +676,51 @@ button:focus-visible,
 .drag-overlay small { color: var(--muted); }
 
 @media (max-width: 980px) {
-  .app { flex-direction: column; }
-  .sidebar {
-    position: sticky;
-    z-index: 5;
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
-    overflow-x: auto;
-  }
-  .side-nav { flex-direction: row; }
-  .side-foot { flex-direction: row; align-items: center; margin-top: 0; }
   .compare, .lab-lower { grid-template-columns: 1fr; }
+  .sheet-head { align-items: flex-start; }
+  .sheet-actions { width: 100%; }
+  .primary.sheet-download, .sheet-again, .specimen-strip button { min-height: 44px; }
+  .drop-plate { min-height: 280px; }
+}
+
+/* mobile-tab-bar: the sidebar becomes the bottom navigation on a phone. */
+@media (max-width: 760px) {
+  .app { display: block; }
+  .sidebar {
+    position: fixed;
+    z-index: 40;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    height: auto;
+    gap: 8px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    border-right: 0;
+    border-top: 1px solid var(--line);
+    background: rgba(16, 16, 16, 0.94);
+    backdrop-filter: blur(18px);
+  }
+  .brand { display: none; }
+  .side-nav { flex-direction: row; }
+  .side-nav button {
+    flex: 1;
+    min-height: 48px;
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 13px;
+  }
+  .side-foot {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 0;
+  }
+  .lab-status { flex: 1 1 100%; padding-bottom: 0; }
+  .reset-mind { flex: 1; min-height: 44px; text-align: center; }
+  .simple-shell {
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(210px + env(safe-area-inset-bottom));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
