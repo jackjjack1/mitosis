@@ -1,17 +1,34 @@
 import { useEffect, useRef, useState } from "react";
+import { BatchQueue } from "./components/BatchQueue";
+import { CloneLab } from "./components/CloneLab";
+import { DropZone } from "./components/DropZone";
+import { FeatureSheet } from "./components/FeatureSheet";
 import { dissectFile } from "./engine/dissect";
 import type { EvolutionState } from "./engine/evolve";
 import { readExact } from "./engine/exact";
+import { downloadBytes } from "./engine/export";
 import { extractFeatures } from "./engine/features";
 import type { FeatureSet } from "./engine/features";
 import { analyzeMachO, isMachOArtifact } from "./engine/macho";
 import type { MachOAnalysis } from "./engine/macho";
+import {
+  MIND_MIME,
+  applyMindImport,
+  decodeMindFile,
+  encodeMindFile,
+  freshSyncId,
+  isMindFile,
+  loadMind,
+  loadSync,
+  rememberRun,
+  saveMind,
+  saveSync,
+  seedFromMemory,
+} from "./engine/memory";
+import type { MindSync } from "./engine/memory";
 import { CloneFormatError, decodeCloneSession, isCloneSession } from "./engine/session";
-import type { Artifact } from "./engine/types";
+import type { Artifact, Mind } from "./engine/types";
 import { downloadEngineKit } from "./features/engineKit";
-import { CloneLab } from "./components/CloneLab";
-import { DropZone } from "./components/DropZone";
-import { FeatureSheet } from "./components/FeatureSheet";
 import {
   audioSpecimen,
   binarySpecimen,
@@ -33,6 +50,14 @@ interface Extraction {
   loadId: number;
 }
 
+interface WebkitEntry {
+  isFile: boolean;
+  isDirectory: boolean;
+  name: string;
+  file: (success: (file: File) => void, failure?: () => void) => void;
+  createReader: () => { readEntries: (success: (entries: WebkitEntry[]) => void) => void };
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown reading error";
 }
@@ -44,23 +69,101 @@ async function fileLooksLikeClone(file: File): Promise<boolean> {
   return isCloneSession(head);
 }
 
+async function fileLooksLikeMind(file: File): Promise<boolean> {
+  if (file.name.toLowerCase().endsWith(".mind")) return true;
+  if (file.size < 8) return false;
+  const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  return isMindFile(head);
+}
+
+async function readEntry(entry: WebkitEntry): Promise<File[]> {
+  if (entry.isFile) {
+    const file = await new Promise<File>((resolve, reject) => entry.file(resolve, () => reject(new Error("unreadable"))));
+    if (!file.size || file.name.startsWith(".")) return [];
+    return [file];
+  }
+  if (!entry.isDirectory) return [];
+  const reader = entry.createReader();
+  const children: WebkitEntry[] = [];
+  for (;;) {
+    const chunk = await new Promise<WebkitEntry[]>((resolve) => reader.readEntries(resolve));
+    if (!chunk.length) break;
+    children.push(...chunk);
+  }
+  const nested = await Promise.all(children.map((child) => readEntry(child)));
+  return nested.flat();
+}
+
+async function filesFromDrop(transfer: DataTransfer): Promise<File[]> {
+  const items = [...transfer.items];
+  const collected: File[] = [];
+  let usedEntries = false;
+  for (const item of items) {
+    const entry = (
+      item as unknown as { webkitGetAsEntry?: () => WebkitEntry | null }
+    ).webkitGetAsEntry?.();
+    if (!entry) continue;
+    usedEntries = true;
+    collected.push(...(await readEntry(entry)));
+  }
+  if (usedEntries) return collected;
+  return [...transfer.files].filter((file) => file.size > 0 && !file.name.startsWith("."));
+}
+
 export default function App() {
   const [result, setResult] = useState<Extraction | null>(null);
+  const [batch, setBatch] = useState<File[] | null>(null);
+  const [mind, setMind] = useState<Mind>(() => loadMind());
+  const [sync, setSync] = useState<MindSync>(() => loadSync());
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [evolving, setEvolving] = useState(false);
 
   const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
   const tokenRef = useRef(0);
   const previewRef = useRef<string | undefined>(undefined);
-  const ingestRef = useRef<(file: File) => void>(() => undefined);
+  const acceptRef = useRef<(files: File[]) => void>(() => undefined);
+  const mindRef = useRef(mind);
+  const syncRef = useRef(sync);
+  mindRef.current = mind;
+  syncRef.current = sync;
 
   useEffect(() => {
     return () => {
       if (previewRef.current) URL.revokeObjectURL(previewRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    const node = folderInput.current;
+    if (node) node.setAttribute("webkitdirectory", "");
+  }, []);
+
+  function storeMind(next: Mind, nextSync = syncRef.current): void {
+    mindRef.current = next;
+    syncRef.current = nextSync;
+    setMind(next);
+    setSync(nextSync);
+    saveMind(next);
+    saveSync(nextSync);
+  }
+
+  async function importMindFile(file: File): Promise<void> {
+    const document = decodeMindFile(new Uint8Array(await file.arrayBuffer()));
+    const applied = applyMindImport(mindRef.current, syncRef.current, document);
+    storeMind(applied.mind, applied.sync);
+    setNotice(`Memory imported · ${applied.mind.memories.length} saved runs · revision ${applied.sync.revision}`);
+  }
+
+  function exportMind(): void {
+    const id = syncRef.current.id || freshSyncId();
+    const next = { id, revision: syncRef.current.revision + 1 };
+    downloadBytes(encodeMindFile(mindRef.current, next), "mitosis-mind.mind", MIND_MIME);
+    storeMind(mindRef.current, next);
+  }
 
   async function loadSpecimen(
     file: File,
@@ -78,6 +181,7 @@ export default function App() {
     }
     if (token !== tokenRef.current) return;
 
+    setBatch(null);
     setResult({
       artifact,
       analysis,
@@ -101,11 +205,18 @@ export default function App() {
     }
     const token = ++tokenRef.current;
     setError(null);
+    setNotice(null);
     setLoading(true);
     setEvolving(false);
     setResult(null);
 
     try {
+      if (await fileLooksLikeMind(file)) {
+        if (token !== tokenRef.current) return;
+        await importMindFile(file);
+        setLoading(false);
+        return;
+      }
       if (await fileLooksLikeClone(file)) {
         if (token !== tokenRef.current) return;
         let session;
@@ -136,8 +247,37 @@ export default function App() {
     }
   }
 
-  ingestRef.current = (file) => {
-    void ingest(file);
+  async function acceptFiles(files: File[]): Promise<void> {
+    const usable = files.filter((file) => file.size > 0 && !file.name.startsWith("."));
+    if (!usable.length) {
+      setError("Empty file — there is nothing to read.");
+      return;
+    }
+    const minds: File[] = [];
+    const rest: File[] = [];
+    for (const file of usable) {
+      if (await fileLooksLikeMind(file)) minds.push(file);
+      else rest.push(file);
+    }
+    setError(null);
+    for (const file of minds) {
+      try {
+        await importMindFile(file);
+      } catch (caught) {
+        setError(`Could not import memory — ${errorText(caught)}`);
+      }
+    }
+    if (rest.length > 1) {
+      setResult(null);
+      setBatch(rest.slice(0, 24));
+      setNotice(rest.length > 24 ? "Batch keeps the first 24 files." : null);
+      return;
+    }
+    if (rest.length === 1) await ingest(rest[0]);
+  }
+
+  acceptRef.current = (files) => {
+    void acceptFiles(files);
   };
 
   useEffect(() => {
@@ -160,8 +300,11 @@ export default function App() {
       event.preventDefault();
       depth = 0;
       setDragging(false);
-      const file = event.dataTransfer?.files?.[0];
-      if (file) ingestRef.current(file);
+      const transfer = event.dataTransfer;
+      if (!transfer) return;
+      void filesFromDrop(transfer).then((files) => {
+        if (files.length) acceptRef.current(files);
+      });
     };
     window.addEventListener("dragenter", enter);
     window.addEventListener("dragleave", leave);
@@ -202,6 +345,8 @@ export default function App() {
     setResult((current) => (current ? { ...current, view } : current));
   }
 
+  const recalled = result && !result.evolution ? seedFromMemory(mind, result.artifact) : null;
+
   return (
     <div className="app">
       <div className="backdrop" aria-hidden="true" />
@@ -221,8 +366,19 @@ export default function App() {
         <div className="topbar-right">
           <div className={`lab-status ${evolving ? "is-live" : ""}`}>
             <i className="pulse-dot" />
-            {evolving ? "EVOLVING · LOCAL" : "LOCAL · NO UPLOAD"}
+            {evolving ? "EVOLVING · LOCAL" : `MIND ${mind.memories.length} · REV ${sync.revision}`}
           </div>
+          <button type="button" className="reset-mind" onClick={exportMind} title="Export the memory bank">
+            EXPORT MIND
+          </button>
+          <button
+            type="button"
+            className="reset-mind"
+            onClick={() => fileInput.current?.click()}
+            title="Import a .mind file or open specimens"
+          >
+            IMPORT
+          </button>
           <button
             type="button"
             className="reset-mind"
@@ -235,24 +391,37 @@ export default function App() {
       </header>
 
       <main className="simple-shell">
-        {result ? (
+        {notice && !batch && <p className="seed-note">{notice}</p>}
+        {batch ? (
+          <BatchQueue
+            files={batch}
+            mind={mind}
+            onMind={(next) => storeMind(next)}
+            onClose={() => setBatch(null)}
+          />
+        ) : result ? (
           <>
-            <div className="view-switch" role="tablist" aria-label="Result">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={result.view === "features"}
-                onClick={() => setView("features")}
-              >
-                FEATURES
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={result.view === "evolve"}
-                onClick={() => setView("evolve")}
-              >
-                EVOLVE
+            <div className="sheet-actions">
+              <div className="view-switch" role="tablist" aria-label="Result">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={result.view === "features"}
+                  onClick={() => setView("features")}
+                >
+                  FEATURES
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={result.view === "evolve"}
+                  onClick={() => setView("evolve")}
+                >
+                  EVOLVE
+                </button>
+              </div>
+              <button type="button" className="sheet-again" onClick={() => { setNotice(null); setResult(null); }}>
+                NEW
               </button>
             </div>
             {result.view === "features" ? (
@@ -267,6 +436,8 @@ export default function App() {
                 artifact={result.artifact}
                 specimen={result.specimen}
                 initial={result.evolution}
+                memorySeed={recalled?.genome ?? null}
+                memoryLabel={recalled ? `${recalled.source.name} · ${Math.round(recalled.source.score * 100)}%` : null}
                 onEvolution={(evolution) => {
                   setResult((current) =>
                     current && current.loadId === result.loadId
@@ -275,6 +446,19 @@ export default function App() {
                   );
                 }}
                 onRunning={setEvolving}
+                onPause={(evolution) => {
+                  const artifact = result.artifact;
+                  const next = rememberRun(mindRef.current, {
+                    artifact,
+                    genome: evolution.genome,
+                    baseline: evolution.baseline,
+                    score: evolution.score,
+                    accepted: evolution.accepted,
+                    attempts: evolution.attempts,
+                  });
+                  storeMind(next);
+                  setNotice(`Remembered ${artifact.name} · ${Math.round(evolution.score * 100)}%`);
+                }}
               />
             )}
           </>
@@ -287,6 +471,11 @@ export default function App() {
             onSample={(kind) => {
               void handleSample(kind);
             }}
+            onBatch={() => {
+              setError(null);
+              setBatch([textSpecimen(), sheetSpecimen(), pdfSpecimen()]);
+            }}
+            onFolder={() => folderInput.current?.click()}
           />
         )}
       </main>
@@ -295,19 +484,32 @@ export default function App() {
         ref={fileInput}
         className="file-input"
         type="file"
+        multiple
         tabIndex={-1}
         onChange={(event) => {
-          const file = event.target.files?.[0];
+          const files = [...(event.target.files ?? [])];
           event.target.value = "";
-          if (file) void ingest(file);
+          if (files.length) void acceptFiles(files);
+        }}
+      />
+      <input
+        ref={folderInput}
+        className="file-input"
+        type="file"
+        multiple
+        tabIndex={-1}
+        onChange={(event) => {
+          const files = [...(event.target.files ?? [])];
+          event.target.value = "";
+          if (files.length) void acceptFiles(files);
         }}
       />
 
-      {dragging && result && (
+      {dragging && (result || batch) && (
         <div className="drag-overlay">
           <div>
-            <span>RELEASE TO REPLACE</span>
-            <small>the current sheet is replaced</small>
+            <span>RELEASE TO QUEUE</span>
+            <small>several files become a batch</small>
           </div>
         </div>
       )}

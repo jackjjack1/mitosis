@@ -105,17 +105,13 @@ npm run release:prepare -- 0.2.0 --commit    # commit and tag, push later
 
 `--commit` refuses to run on a dirty working tree so the bump stays a commit of its own, refuses a detached HEAD, and refuses a version that is already current or whose tag exists. The release workflow re-checks that the tag matches the files before it builds, so a mistagged release stops early instead of publishing an app that reports a different version.
 
-## Where stage 3 fits
+## Where the next stages fit
 
-Stage 2 adds audio, PDF, and spreadsheet cloners, plus a population search that sits beside the hill climb. The session is still one embedded specimen.
+Stage 3 seeds a new run from `recallMemories`, writes that run back with `rememberRun` when it pauses, and can export or import the whole bank as a `.mind` file. The file starts with `MTSMIND1` and carries a sync id, revision, and etag so two copies of the same bank can merge without dropping the higher score. A folder drop, a multi-file pick, or **TRY A BATCH** evolves each file for a short population run, writes one `.clone` per file, and adds `batch-report.md` plus `batch-report.json` to `mitosis-batch.zip`.
 
-Stage 3 is memory seeding, sync, and batch mode. It needs:
-
-- **Seeding from past runs.** `recallMemories` already ranks saved genomes. The lab should offer those as the `seed` argument to `startEvolution` and `startPopulation`, then call `recordRun` when a run pauses. No format change.
-- **File and cloud sync.** The `.clone` bytes are the sync payload. A copy that points at an external specimen, instead of embedding it, needs a non-zero flags word and a new version. Version 1 readers reject that on purpose. Cloud sync is a transport for the same file, not a second format.
-- **Batch and folders.** One `.clone` per specimen. A folder run is a queue of files plus a directory of sessions. The UI needs a multi-file picker and a list of runs. `advancePopulation` and `advanceEvolution` stay the per-file step.
-
-Later still: an AI note can be an extra header key such as `note`, which version 1 readers ignore. A CLI calls `encodeCloneSession`, `decodeCloneSession`, and `exportReconstruction`. Signing stays in the release workflow.
+- **Stage 4 — AI description.** `Cloner.reflect` is the summary hook. A model can write a longer note into an extra `.clone` or `.mind` header key. Version 1 readers ignore unknown keys, so the description does not need a new format.
+- **Stage 5 — website and CLI.** The site and the command-line tool call `encodeCloneSession`, `decodeCloneSession`, `encodeMindFile`, and `runBatch`. Signing and notarizing stay in the release workflow. The Mac app already owns the `.clone` type.
+- **Stage 6 — features from websites as well as apps.** The feature sheet already turns a local artifact into palette, voice, structure, and API files. A page or app target adds a capture step in front of `extractFeatures`: styles, layout, components, and behavior become the same kind of plain files. The cloners stay behind that capture.
 
 ## Honest limits
 

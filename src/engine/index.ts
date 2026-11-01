@@ -72,6 +72,36 @@ export {
   sessionFilename,
 } from "./session";
 export type { CloneSession } from "./session";
+export {
+  batchEntries,
+  batchReportJson,
+  batchReportMarkdown,
+  runBatch,
+} from "./batch";
+export type { BatchFile, BatchOptions, BatchResult, BatchRow } from "./batch";
+export {
+  MIND_FILE_FORMAT,
+  MIND_FILE_MAGIC,
+  MIND_FILE_VERSION,
+  MIND_MIME,
+  applyMindImport,
+  decodeMindFile,
+  emptyMind,
+  encodeMindFile,
+  freshSyncId,
+  isMindFile,
+  loadMind,
+  loadSync,
+  mergeMinds,
+  mindEtag,
+  recallMemories,
+  recordRun,
+  rememberRun,
+  saveMind,
+  saveSync,
+  seedFromMemory,
+} from "./memory";
+export type { MindDocument, MindSync } from "./memory";
 
 export function createCloner(artifact: Artifact): Cloner {
   if (artifact.kind === "image" && artifact.image) return createImageCloner(artifact);

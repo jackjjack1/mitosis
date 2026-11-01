@@ -4,12 +4,16 @@ export function DropZone({
   dragging,
   onBrowse,
   onSample,
+  onBatch,
+  onFolder,
 }: {
   loading: boolean;
   error: string | null;
   dragging: boolean;
   onBrowse: () => void;
   onSample: (kind: "image" | "text" | "binary" | "audio" | "pdf" | "sheet") => void;
+  onBatch: () => void;
+  onFolder: () => void;
 }) {
   return (
     <section className="empty-state">
@@ -93,6 +97,12 @@ export function DropZone({
         </button>
         <button type="button" onClick={() => onSample("sheet")} disabled={loading}>
           TABLE
+        </button>
+        <button type="button" onClick={onBatch} disabled={loading}>
+          TRY A BATCH
+        </button>
+        <button type="button" onClick={onFolder} disabled={loading}>
+          FOLDER
         </button>
       </div>
     </section>

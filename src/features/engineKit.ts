@@ -13,6 +13,7 @@ import featuresSource from "../engine/features.ts?raw";
 import evolveSource from "../engine/evolve.ts?raw";
 import sessionSource from "../engine/session.ts?raw";
 import exportSource from "../engine/export.ts?raw";
+import batchSource from "../engine/batch.ts?raw";
 import audioSource from "../engine/audio.ts?raw";
 import pdfSource from "../engine/pdf.ts?raw";
 import sheetSource from "../engine/sheet.ts?raw";
@@ -177,6 +178,8 @@ const MANIFEST = `${JSON.stringify(
       "pdf cloner",
       "spreadsheet csv/xlsx cloner",
       "population crossover",
+      "memory seeding and mind sync file",
+      "batch clone sessions",
     ],
     source: "https://github.com/jackjjack1/mitosis",
   },
@@ -208,6 +211,7 @@ export function buildEngineKit(): Blob {
     { name: "engine/evolve.ts", data: encode(evolveSource) },
     { name: "engine/session.ts", data: encode(sessionSource) },
     { name: "engine/export.ts", data: encode(exportSource) },
+    { name: "engine/batch.ts", data: encode(batchSource) },
     { name: "engine/audio.ts", data: encode(audioSource) },
     { name: "engine/pdf.ts", data: encode(pdfSource) },
     { name: "engine/sheet.ts", data: encode(sheetSource) },
